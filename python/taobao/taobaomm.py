@@ -6,17 +6,18 @@ import urlparse
 import time
 import re
 import codecs
-from threading import Thread
-from Queue import Queue
+import threading
 import MySQLdb
+import logging
+from Queue import Queue
 from pypinyin import lazy_pinyin
 
 THREAD_COUNT = 5
 
-class Worker(Thread):
+class Worker(threading.Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, tasks):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.tasks = tasks
         self.daemon = True
         self.start()
@@ -119,24 +120,61 @@ class Taobao(object):
         self.starts=starts
         self.ends=ends
         self.tool =Tool()
+        self.setLog()
+        
+    def setLog(self):
+        logpath=self.dpath+'/logs'
+        self.mkdir(logpath)
+        errorFormatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
+        infoFormatter=logging.Formatter('%(asctime)s %(message)s')
+        curr_time=time.localtime()
+        currDate=time.strftime('%Y-%m-%d',curr_time)
+        infoName=logpath+r'/info_%s.log' % currDate
+        errorName=logpath+r'/error_%s.log' % currDate
+        errorLogger=logging.getLogger('error')
+        infoLogger=logging.getLogger('info')
+        
+        errorHandler=logging.FileHandler(errorName,mode='a',encoding='utf-8')
+        errorLogger.setLevel(logging.ERROR)
+        errorHandler.setFormatter(errorFormatter)
+        errorLogger.addHandler(errorHandler)
+        
+        infoLogger.setLevel(logging.INFO)
+        infoHandler=logging.FileHandler(infoName,mode='a',encoding='utf-8')
+        infoHandler.setFormatter(infoFormatter)
+        infoLogger.addHandler(infoHandler)
+        self.errorLogger=errorLogger
+        self.infoLogger=infoLogger
     
     def mkdir(self,fdir):
         if not os.path.exists(fdir):
            os.makedirs(fdir)
-    
-    def gettime(self):
-        curr_time=time.localtime()
-        curr_time=time.strftime('%Y-%m-%d %H:%M:%S',curr_time)
-        return curr_time
            
     def bra(self,s):
-        rule=re.compile('[6-9]{1}[0-9]{1}[a-g|A-G]?',re.I)
-        flag=re.match(rule,s)
-        if flag:
+        rule=re.compile('^[6-9]{1}[0-9]{1}[a-g]?',re.I)
+        rule1=re.compile('^[a-g]?[6-9]{1}[0-9]{1}',re.I)
+        rule2=re.compile('^[3-4]{1}[0-9]{1}[a-g]')
+        flag=False
+        if re.match(rule,s):
             m=re.search('(\d+)(\w?)',s)
             num=m.group(1)
+            upbar=m.group(2)
+            flag=True
+        elif re.match(rule1,s):
+            m=re.search('(\w?)(\d+)',s)
+            num=m.group(2)
+            upbar=m.group(1)
+            flag=True
+        elif re.match(rule2,s):
+            m=re.search('^(\d+)(\w?)',s)
+            num=m.group(1)
+            upbar=m.group(2)
+            flag=True
+        if flag:
             num=int(num)
             bar=30
+            if num<60:
+                bar=num
             if num>=68 and num<=72:
                 bar=32
             elif num>=73 and num<=77:
@@ -146,12 +184,12 @@ class Taobao(object):
             elif num>=83 and num<=87:
                 bar=38
             elif num>=88 and num<=92:
-                bar=40
-            upbar=m.group(2)
+                bar=40  
             if upbar!='':
                 bar=str(bar)+upbar.upper()
             return bar
         else:
+            s=s.replace('----','')
             return s
         
     def getContent(self,page):
@@ -176,10 +214,8 @@ class Taobao(object):
                 errors=str(e.reason)
             elif hasattr(e,'code'):
                 errors='error code:'+e.code+' message:'+e.reade()
-            curr_time=self.gettime()
-            fp=codecs.open(self.dpath+'/error.log','a','utf-8')
-            fp.write(curr_time+u' 获取第'+params+u'页数据失败，原因:'+errors+'\n')
-            fp.close()
+            msg=u'获取第'+params+u'页数据失败:'+errors
+            self.errorLogger.error(msg)
             content=()
             return content
         except urllib2.URLError,e:
@@ -189,10 +225,8 @@ class Taobao(object):
                 errors=str(e.reason)
             elif hasattr(e,'code'):
                 errors='error code:'+e.code+' message:'+e.reade()
-            curr_time=self.gettime()
-            fp=codecs.open(self.dpath+'/error.log','a','utf-8')
-            fp.write(curr_time+u' 获取第'+params+u'页数据失败，原因:'+errors+'\n')
-            fp.close()
+            msg=u'获取第'+params+u'页数据失败:'+errors
+            self.errorLogger.error(msg)
             content=()
             return content
         else:
@@ -217,20 +251,16 @@ class Taobao(object):
             elif hasattr(e,'code'):
                 errors='error code:'+e.code+' message:'+e.reade()
             print u'save image error ==== OK' % descp
-            curr_time=self.gettime()
-            f=codecs.open(abpath+'/error.log','a','utf-8')
-            f.write(curr_time+u' 保存图片:'+img_url+u'失败,原因:'+errors+'\n')
-            f.close()
+            msg=u'保存图片:'+img_url+u'失败:'+errors
+            self.errorLogger.error(msg)
         except urllib2.URLError,e:
             errors=''
             if hasattr(e,'reason'):
                 errors=str(e.reason)
             elif hasattr(e,'code'):
                 errors='error code:'+e.code+' message:'+e.reade()
-            curr_time=self.gettime()
-            fp=codecs.open(abpath+'/error.log','a','utf-8')
-            f.write(curr_time+u' 保存图片:'+img_url+u'失败,原因:'+errors+'\n')
-            fp.close()
+            msg=u'保存图片:'+img_url+u'失败:'+errors
+            self.errorLogger.error(msg)
         else:
             pass
     
@@ -258,24 +288,21 @@ class Taobao(object):
                 errors=str(e.reason)
             elif hasattr(e,'code'):
                 errors='error code:'+e.code+' message:'+e.reade()
-            curr_time=self.gettime()
-            fp=codecs.open(self.dpath+'/error.log','a','utf-8')
-            fp.write(curr_time+' '+str(page)+u'页 用户'+user_id+u'错误'+errors+'\n')
-            fp.close()
+            msg=u'第 '+str(page)+u'页 用户'+user_id+u'信息获取失败:'+errors
+            self.errorLogger.error(msg)
         except urllib2.URLError,e:
             errors=''
             if hasattr(e,'reason'):
                 errors=str(e.reason)
             elif hasattr(e,'code'):
                 errors='error code:'+e.code+' message:'+e.reade()
-            curr_time=self.gettime()
-            fp=codecs.open(self.dpath+'/error.log','a','utf-8')
-            fp.write(curr_time+' '+str(page)+u'页 用户'+user_id+u'错误'+errors+'\n')
-            fp.close()
+            msg=u'第 '+str(page)+u'页 用户'+user_id+u'信息获取失败:'+errors
+            self.errorLogger.error(msg)
         else:
             pass
         
     def saveAll(self,contents,page):
+        print u'%s 开始运行' % threading.currentThread().name
         sname=contents[3]
         profiles=self.getProfile(contents[2],page)
         if sname=='':
@@ -298,16 +325,27 @@ class Taobao(object):
             print u'开始保存 %s 详细信息profile表' % sname
             userid=conn.insert_id()
             borthday=self.tool.replace(profiles[1])
-            school=self.tool.replace(profiles[5])
+            school  =self.tool.replace(profiles[5])
             exprince=self.tool.replace(profiles[12])
-            bar=self.bra(profiles[10])
+            bar     =self.bra(profiles[10])
+            blood   =profiles[4]
+            blood   =blood.replace(u'型','')
+            weight  =profiles[8]
+            weight  =weight.replace('KG','')
+            weight  =weight.replace('----','')
+            height  =profiles[7]
+            height  =height.replace('CM','')
+            height  =height.replace('----','')
+            shoes   =profiles[11]
+            shoes   =shoes.replace(u'码','')
+            shoes   =shoes.replace('----','')
+            solid   =profiles[9]
+            solid   =solid.replace('0-0-0','')
             sql1="insert into `profile` (`user_id`,`nicename`,`borthday`,`blood`,`school`,`style`,`height`,`weight`,`solid`,`bar`,`shoes`,`exprince`) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            n=cursor.execute(sql1,(str(userid),profiles[0],borthday,profiles[4],school,profiles[6],profiles[7],profiles[8],profiles[9],bar,profiles[11],exprince))
+            n=cursor.execute(sql1,(str(userid),profiles[0],borthday,blood,school,profiles[6],height,weight,solid,bar,shoes,exprince))
         except MySQLdb.Error,e:
-            curr_time=gettime()
-            fp=codecs.open(self.dpath+'/error.log','a','utf-8')
-            fp.write(curr_time+' '+str(page)+u'页 '+sname+u'错误:'+str(e)+'\n')
-            fp.close()
+            msg=u'第 '+str(page)+u'页 '+sname+u'写入数据库失败:'+str(e)
+            self.errorLogger.error(msg)
         print u'开始保存 %s 详细信息到文件' % sname
         fp=codecs.open(abpath+'/profile.txt','wb','utf-8')
         for v in contents:
@@ -319,9 +357,9 @@ class Taobao(object):
             temp=j.replace('\n','')
             fp.write(temp+'\n')
         fp.close()
-        self.saveimg(contents[1],str(page)+'/'+username,sname+u'小图')
+        """self.saveimg(contents[1],str(page)+'/'+username,sname+u'小图')
         self.saveimg(contents[8],str(page)+'/'+username,sname+u'大图')
-        self.saveimg(profiles[13],str(page)+'/'+username,sname+u'生活图')
+        self.saveimg(profiles[13],str(page)+'/'+username,sname+u'生活图')"""
         print u"""%s信息 保存完毕
         """ % sname
     
@@ -331,20 +369,13 @@ class Taobao(object):
             print u'开始抓取第 %d 页数据' % i
             content=self.getContent(i)
             num=len(content)
-            curr_time=self.gettime()
-            fp=codecs.open(self.dpath+'/splider.log','a','utf-8')
-            fp.write(curr_time+u' 开始抓取第 '+str(i)+u' 页数据 共计 '+str(num)+u' 条记录\n')
-            fp.close()
+            msg=u'开始抓取第'+str(i)+u'页数据 共计'+str(num)+u'条记录'
+            self.infoLogger.info(msg)
             for cont in content:
                 pool.add_task(self.saveAll,cont,i)
                 time.sleep(1)
             pool.wait_completion()
     
 if __name__ == '__main__':
-    mm=Taobao('https://mm.taobao.com/json/request_top_list.htm','e:/taobao',761,801)
+    mm=Taobao('https://mm.taobao.com/json/request_top_list.htm','e:/taobao',1157,1158)
     mm.run()
-    
-    
-        
-        
-        

@@ -2,16 +2,16 @@
 import os
 import time
 import shutil
-from threading import Thread
+import threading
 from Queue import Queue
 
 THREAD_COUNT = 5
 file_list=[]
 
-class Worker(Thread):
+class Worker(threading.Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, tasks):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.tasks = tasks
         self.daemon = True
         self.start()
@@ -39,20 +39,19 @@ class ThreadPool:
         self.tasks.join()
 
 def copyer(file,spath,dpath):
-	absf=spath+file
-	abdf=dpath+file
-	nums=0
-	if not os.path.exists(abdf):
-	    nums=len(abdf.split('\\'))
-        if nums > 3:
+    absf=spath+file
+    abdf=dpath+file
+    if not os.path.exists(abdf):
+        nums=len(abdf.split('\\'))
+        if nums>3:
             flag=abdf.rindex('\\')
             subdir=abdf[0:flag]
             if not os.path.exists(subdir):
-            	os.makedirs(subdir)
-            print u'正在复制 %s' % absf
-            shutil.copy(absf,abdf)
-        else:
-            print u'%s 已经复制过了' %  absf
+                os.makedirs(subdir)
+        print u'%s 正在复制 %s' % (threading.currentThread().name,absf)
+        shutil.copy(absf,abdf)
+    else:
+        print u'%s 已经复制过了' %  absf
 def listdir(spath):
     for fp in os.listdir(spath):
     	absp=os.path.join(spath,fp)

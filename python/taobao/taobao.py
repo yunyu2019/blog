@@ -36,13 +36,30 @@ class Tool:
         return x.strip()
 
 def bra(s):
-    rule=re.compile('[6-9]{1}[0-9]{1}[a-g|A-G]?',re.I)
-    flag=re.match(rule,s)
-    if flag:
-        m=re.search('(\d+)(\w?)',result[1])
+    rule=re.compile('^[6-9]{1}[0-9]{1}[a-g]?',re.I)
+    rule1=re.compile('^[a-g]?[6-9]{1}[0-9]{1}',re.I)
+    rule2=re.compile('^[3-4]{1}[0-9]{1}[a-g]')
+    flag=False
+    if re.match(rule,s):
+        m=re.search('(\d+)(\w?)',s)
         num=m.group(1)
+        upbar=m.group(2)
+        flag=True
+    elif re.match(rule1,s):
+        m=re.search('(\w?)(\d+)',s)
+        num=m.group(2)
+        upbar=m.group(1)
+        flag=True
+    elif re.match(rule2,s):
+        m=re.search('^(\d+)(\w?)',s)
+        num=m.group(1)
+        upbar=m.group(2)
+        flag=True
+    if flag:
         num=int(num)
         bar=30
+        if num<60:
+            bar=num
         if num>=68 and num<=72:
             bar=32
         elif num>=73 and num<=77:
@@ -52,11 +69,12 @@ def bra(s):
         elif num>=83 and num<=87:
             bar=38
         elif num>=88 and num<=92:
-            bar=40
-        upbar=m.group(2)
+            bar=40  
         if upbar!='':
             bar=str(bar)+upbar.upper()
+        return bar
     else:
+        s=s.replace('----','')
         return s
 
 def gettime():
@@ -64,7 +82,7 @@ def gettime():
     curr_time=time.strftime('%Y-%m-%d %H:%M:%S',curr_time)
     return curr_time
 
-page=779
+page=1122
 list_url='https://mm.taobao.com/json/request_top_list.htm?page='+str(page)
 header={
             'Host':'mm.taobao.com',
@@ -76,7 +94,7 @@ try:
     html=urllib2.urlopen(req).read().decode('gbk')
     rule=re.compile('<div class="list-item".*?pic-word.*?<a href="(.*?)".*?<img src="(.*?)".*?<a class="lady-name" href="(.*?)".*?>(.*?)</a>.*?<strong>(.*?)</strong>.*?<span>(.*?)</span>.*?<em>(.*?)</em>.*?<em><strong>(.*?)</strong>.*?</em>.*?<img data-ks-lazyload="(.*?)".*?/>.*?class="popularity".*?<dd>.*?(\d+).*?</dd>.*?class="info-detail".*?<li>.*?<strong>(.*?)</strong>.*?</li>.*?<li>.*?<strong>(.*?)</strong>.*?</li>.*?<li>.*?<strong>(.*?)</strong>.*?</li>.*?<li>.*?<strong>(.*?)</strong>.*?</li>.*?<p class="description">(.*?)</p>?',re.S)
     contents=re.findall(rule,html)
-    content=contents[1]
+    content=contents[9]
     tool=Tool()
     sname=content[3]
     if sname=='':
@@ -100,8 +118,7 @@ try:
     rule=re.compile('<ul class="mm-p-info-cell clearfix".*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?><label.*?<span>(.*?)</span>.*?<li.*?>.*?<p>(.*?)</p>.*?<li.*?>.*?<p>(.*?)</p>.*?<li.*?>.*?<p>(.*?)</p>.*?<li.*?>.*?<p>(.*?)</p>.*?<li.*?>.*?<p>(.*?)</p>.*?<div class="mm-p-info mm-p-experience-info">.*?<p>(.*?)</p>.*?class="mm-p-modelCard".*?<img src="(.*?)".*?/>?',re.S)
     profiles=re.findall(rule,html1)
     profile=profiles[0]
-    bras=bra(profile[10])
-    
+
     conn=MySQLdb.connect(host="127.0.0.1",user="root",passwd="123456",db="taobao",charset="utf8")
     cursor = conn.cursor()
     try:
@@ -111,9 +128,23 @@ try:
         school=tool.replace(profile[5])
         borthday=tool.replace(profile[1])
         exprince=tool.replace(profile[12])
+        bras=bra(profile[10])
         blood=profile[4]
+        blood   =profile[4]
+        blood   =blood.replace(u'型','')
+        weight  =profile[8]
+        weight  =weight.replace('KG','')
+        weight  =weight.replace('----','')
+        height  =profile[7]
+        height  =height.replace('CM','')
+        height  =height.replace('----','')
+        shoes   =profile[11]
+        shoes   =shoes.replace(u'码','')
+        shoes   =shoes.replace('----','')
+        solid   =profile[9]
+        solid   =solid.replace('0-0-0','')
         sql1="insert into `profile` (`user_id`,`nicename`,`borthday`,`blood`,`school`,`style`,`height`,`weight`,`solid`,`bar`,`shoes`,`exprince`) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        n=cursor.execute(sql1,(str(userid),profile[0],borthday,blood,school,profile[6],profile[7],profile[8],profile[9],bras,profile[11],exprince))
+        n=cursor.execute(sql1,(str(userid),profile[0],borthday,blood,school,profile[6],height,weight,solid,bras,shoes,exprince))
         #conn.commit()
     except MySQLdb.Error,e:
         #conn.rollback()
@@ -136,7 +167,7 @@ try:
         temp=j.replace('\n','')
         fp.write(temp+'\n')
     fp.close()
-except urllib2.HttpError,e:
+except urllib2.HTTPError,e:
     errors=''
     if hasattr(e,'reason'):
         errors=str(e.reason)

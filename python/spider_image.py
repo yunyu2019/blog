@@ -5,15 +5,15 @@ import os
 import urllib2
 import time
 import re
-from threading import Thread
+import threading
 from Queue import Queue
 
 THREAD_COUNT = 5
 
-class Worker(Thread):
+class Worker(threading.Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, tasks):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.tasks = tasks
         self.daemon = True
         self.start()
@@ -47,6 +47,7 @@ class Curlimg(object):
         self.mkdir(dpath)
     
     def save_img(self,subdir,img_url):
+        print u'%s 开始运行' % threading.currentThread().name
         fn=img_url.split('/')
         abpath=self.dpath+'\\'+subdir
         self.mkdir(abpath)
