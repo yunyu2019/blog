@@ -1,0 +1,9 @@
+# komodo edit project files
+.komodotools/
+python.komodoproject
+
+# windows thumbnail cache
+Thumbs.db
+.gitignore
+*.pyc
+*.pyo
