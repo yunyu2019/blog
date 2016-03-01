@@ -13,11 +13,11 @@ BOT_NAME = 'zhizhu'
 
 SPIDER_MODULES = ['zhizhu.spiders']
 NEWSPIDER_MODULE = 'zhizhu.spiders'
-
+IMAGES_STORE='/home/www/zhizhu/images'
 ITEM_PIPELINES = {
     'zhizhu.pipelines.ZhizhuPipeline': 300,
+    'zhizhu.pipelines.MyImagesPipeline': 1
 }
-
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'zhizhu (+http://www.yourdomain.com)'
 

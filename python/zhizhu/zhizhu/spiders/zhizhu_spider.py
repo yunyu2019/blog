@@ -91,4 +91,5 @@ class ZhizhuSpider(scrapy.Spider):
         item['shoes']   =profiles[4].strip(u'码')
         item['exprince']=exprince[0].strip()
         item['life_img']='https:'+hxs.css('.mm-p-modelCard img::attr(src)').extract()[0]
+        item['image_urls']=[item['faceimg'],item['big_img'],item['life_img']]
         yield item

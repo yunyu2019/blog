@@ -38,3 +38,4 @@ class ZhizhuItem(scrapy.Item):
     solid=scrapy.Field()
     shoes=scrapy.Field()
     exprince=scrapy.Field()
+    image_urls=scrapy.Field()
