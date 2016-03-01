@@ -1,6 +1,6 @@
 # komodo edit project files
 .komodotools/
-python.komodoproject
+*.komodoproject
 
 # windows thumbnail cache
 Thumbs.db
