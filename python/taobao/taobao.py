@@ -77,12 +77,29 @@ def bra(s):
         s=s.replace('----','')
         return s
 
-def gettime():
-    curr_time=time.localtime()
-    curr_time=time.strftime('%Y-%m-%d %H:%M:%S',curr_time)
-    return curr_time
+logpath='e:/taobao/logs'
+if not os.path.exists(logpath):
+    os.makedirs(logpath)
+errorFormatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
+infoFormatter=logging.Formatter('%(asctime)s %(message)s')
+curr_time=time.localtime()
+currDate=time.strftime('%Y-%m-%d',curr_time)
+infoName=logpath+r'/info_%s.log' % currDate
+errorName=logpath+r'/error_%s.log' % currDate
+errorLogger=logging.getLogger('error')
+infoLogger=logging.getLogger('info')
 
-page=1122
+errorHandler=logging.FileHandler(errorName,mode='a',encoding='utf-8')
+errorLogger.setLevel(logging.ERROR)
+errorHandler.setFormatter(errorFormatter)
+errorLogger.addHandler(errorHandler)
+
+infoLogger.setLevel(logging.INFO)
+infoHandler=logging.FileHandler(infoName,mode='a',encoding='utf-8')
+infoHandler.setFormatter(infoFormatter)
+infoLogger.addHandler(infoHandler)
+
+page=1235
 list_url='https://mm.taobao.com/json/request_top_list.htm?page='+str(page)
 header={
             'Host':'mm.taobao.com',
@@ -148,10 +165,8 @@ try:
         #conn.commit()
     except MySQLdb.Error,e:
         #conn.rollback()
-        curr_time=gettime()
-        fp=codecs.open('e:/taobao/error.txt','a','utf-8')
-        fp.write(curr_time+u' '+str(page)+u' 页 '+sname+u'错误: '+str(e)+'\n')
-        fp.close()
+        msg=str(page)+u' 页 '+sname+u'错误: '+str(e)
+        errorLogger.error(msg)
     
     abpath='e:/taobao/'+str(page)+'/'+name
     if not os.path.exists(abpath):
@@ -173,10 +188,8 @@ except urllib2.HTTPError,e:
         errors=str(e.reason)
     elif hasattr(e,'code'):
         errors='error code:'+e.code+' message:'+e.reade()
-    curr_time=gettime()
-    fp=codecs.open('e:/taobao/error.log','a','utf-8')
-    fp.write(curr_time+' '+str(page)+u' 错误:'+errors+'\n')
-    fp.close()
+    msg=str(page)+u' 错误:'+errors
+    errorLogger.error(msg)
     
 except urllib2.URLError,e:
     errors=''
@@ -184,9 +197,7 @@ except urllib2.URLError,e:
         errors=str(e.reason)
     elif hasattr(e,'code'):
         errors='error code:'+e.code+' message:'+e.reade()
-    curr_time=gettime()
-    fp=codecs.open('e:/taobao/error.log','a','utf-8')
-    fp.write(curr_time+' '+str(page)+u' 错误: '+errors+'\n')
-    fp.close()
+    msg=str(page)+u' 错误: '+errors
+    errorLogger.error(msg)
 else:
     pass
