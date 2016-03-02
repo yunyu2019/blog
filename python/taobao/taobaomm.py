@@ -1,14 +1,18 @@
 #!/usr/bin/python
 #-*-coding:UTF-8-*-
 import os
-import urllib2
-import urlparse
-import time
 import re
+import sys
+import time
 import codecs
-import threading
+import imghdr
+import urllib2
 import MySQLdb
 import logging
+import urlparse
+import threading
+import ConfigParser
+
 from Queue import Queue
 from pypinyin import lazy_pinyin
 
@@ -112,6 +116,23 @@ CREATE TABLE `profile` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 """
 
+"""
+def getImgsrc(img):
+    compiles=re.compile('(?:https|http)://(.*)\.(jpg|jpeg|png|gif)',re.I)
+    if re.match(compiles,img):
+        return  img
+    else:
+        return  ''
+"""
+
+def cur_file_dir():
+    """获取当前文件目录"""
+    path = sys.path[0]
+    if os.path.isdir(path):
+        return path
+    elif os.path.isfile(path):
+        return os.path.dirname(path)
+    
 class Taobao(object):
     """抓取淘宝mm的程序"""
     def __init__(self,urls,dpath,starts,ends):
@@ -119,32 +140,52 @@ class Taobao(object):
         self.dpath=dpath
         self.starts=starts
         self.ends=ends
-        self.tool =Tool()
+        self.getConfig()
         self.setLog()
-        
+        self.tool =Tool()
+
+    def getConfig(self):
+        """读取配置文件"""
+        cf = ConfigParser.RawConfigParser()
+        root=cur_file_dir()
+        cf.read(root+'/taobao.conf')
+        sectiones=cf.sections()
+        config={}
+        for i in sectiones:
+            opts=cf.options(i)
+            temp={}
+            for j in opts:
+                temp[j]=cf.get(i,j)
+            config[i]=temp
+        self.config=config
+
     def setLog(self):
+        """设置日志"""
         logpath=self.dpath+'/logs'
         self.mkdir(logpath)
-        errorFormatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
-        infoFormatter=logging.Formatter('%(asctime)s %(message)s')
+        
         curr_time=time.localtime()
-        currDate=time.strftime('%Y-%m-%d',curr_time)
-        infoName=logpath+r'/info_%s.log' % currDate
-        errorName=logpath+r'/error_%s.log' % currDate
-        errorLogger=logging.getLogger('error')
-        infoLogger=logging.getLogger('info')
+        currDate=time.strftime(self.config['Log']['log_format'],curr_time)
         
-        errorHandler=logging.FileHandler(errorName,mode='a',encoding='utf-8')
-        errorLogger.setLevel(logging.ERROR)
-        errorHandler.setFormatter(errorFormatter)
-        errorLogger.addHandler(errorHandler)
-        
-        infoLogger.setLevel(logging.INFO)
-        infoHandler=logging.FileHandler(infoName,mode='a',encoding='utf-8')
-        infoHandler.setFormatter(infoFormatter)
-        infoLogger.addHandler(infoHandler)
-        self.errorLogger=errorLogger
-        self.infoLogger=infoLogger
+        if 'error' in self.config['Log']['levels']:
+            errorFormatter=logging.Formatter(self.config['Log']['error_format'])
+            errorLogger=logging.getLogger('error')
+            errorName=logpath+r'/error_%s.log' % currDate
+            errorHandler=logging.FileHandler(errorName,mode='a',encoding='utf-8')
+            errorLogger.setLevel(logging.ERROR)
+            errorHandler.setFormatter(errorFormatter)
+            errorLogger.addHandler(errorHandler)
+            self.errorLogger=errorLogger
+            
+        if 'info' in self.config['Log']['levels']:
+            infoFormatter=logging.Formatter(self.config['Log']['info_format'])
+            infoLogger=logging.getLogger('info')
+            infoName=logpath+r'/info_%s.log' % currDate
+            infoLogger.setLevel(logging.INFO)
+            infoHandler=logging.FileHandler(infoName,mode='a',encoding='utf-8')
+            infoHandler.setFormatter(infoFormatter)
+            infoLogger.addHandler(infoHandler)
+            self.infoLogger=infoLogger
     
     def mkdir(self,fdir):
         if not os.path.exists(fdir):
@@ -240,9 +281,17 @@ class Taobao(object):
         self.mkdir(abpath)
         try:
             data=urllib2.urlopen(img_url,timeout=20).read()
-            f=open(abpath+'/'+fn[-1],'wb')
+            file_path=abpath+'/'+fn[-1]
+            f=open(file_path,'wb')
             f.write(data)
             f.close()
+            rule=re.compile('(.*)\.(jpg|jpeg|png|gif)',re.I)
+            if re.match(rule,file_path):
+               pass
+            else:
+               imgType = imghdr.what(file_path)
+               dfile=file_path+'.'+imgType
+               os.rename(file_path,dfile)
             print u'save %s image ===========  ok' % descp
         except urllib2.HTTPError,e:
             errors=''
@@ -308,20 +357,19 @@ class Taobao(object):
         if sname=='':
             sname=profiles[0]
         user=lazy_pinyin(sname)
-        username=''
-        for uls in user:
-            username+=uls
+        username=''.join(user)
         abpath=self.dpath+'/'+str(page)+'/'+username
         self.mkdir(abpath)
-        conn=MySQLdb.connect(host="127.0.0.1",user="root",passwd="123456",db="taobao",charset="utf8")
+        conn=MySQLdb.connect(host=self.config['Mysql']['host'],user=self.config['Mysql']['user'],passwd=self.config['Mysql']['passwd'],db=self.config['Mysql']['database'],charset=self.config['Mysql']['charset'])
         cursor = conn.cursor()
         print u'开始保存 %s 基本信息到user表' % sname
         descp=self.tool.replace(contents[13].encode('utf-8'))
-        big_img=self.tool.replace(contents[8].encode('utf-8'))
-        life_img=self.tool.replace(profiles[13].encode('utf-8'))
+        big_img='https:'+self.tool.replace(contents[8].encode('utf-8'))
+        life_img='https:'+self.tool.replace(profiles[13].encode('utf-8'))
+        face_img='https:'+contents[1]
         try:
             sql="insert into `user` (`name`,`age`,`profile_url`,`faceimg`,`tags`,`descp`,`city`,`imgnums`,`integral`,`fans`,`signnum`,`rates`,`model_img`,`big_img`,`life_img`,`pinyin`) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            n=cursor.execute(sql,(sname,contents[4],'https:'+contents[0],'https:'+contents[1],contents[6],contents[14],contents[5],contents[12],contents[9],contents[7],descp,contents[11],'','https:'+big_img,'https:'+life_img,username))
+            n=cursor.execute(sql,(sname,contents[4],'https:'+contents[0],face_img,contents[6],contents[14],contents[5],contents[12],contents[9],contents[7],descp,contents[11],'',big_img,life_img,username))
             print u'开始保存 %s 详细信息profile表' % sname
             userid=conn.insert_id()
             borthday=self.tool.replace(profiles[1])
@@ -377,5 +425,5 @@ class Taobao(object):
             pool.wait_completion()
     
 if __name__ == '__main__':
-    mm=Taobao('https://mm.taobao.com/json/request_top_list.htm','e:/taobao',1157,1158)
+    mm=Taobao('https://mm.taobao.com/json/request_top_list.htm','e:/taobao',1254,1255)
     mm.run()

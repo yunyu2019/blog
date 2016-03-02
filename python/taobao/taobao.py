@@ -7,6 +7,7 @@ import urlparse
 import MySQLdb
 import time
 import codecs
+import logging
 from pypinyin import lazy_pinyin
 
 class Tool:
@@ -117,9 +118,7 @@ try:
     if sname=='':
         sname=profiles[0]
     upin=lazy_pinyin(sname)
-    name=''
-    for uname in upin:
-        name+=uname
+    name=''.join(upin)
     
     profile_url='https:'+content[2]
     result=urlparse.urlparse(profile_url)
