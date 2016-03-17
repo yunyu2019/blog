@@ -6,6 +6,7 @@ import urlparse
 import logging
 import codecs
 import traceback
+from pypinyin import lazy_pinyin
 from scrapy.selector import Selector
 from zhizhu.items import *
 
@@ -28,11 +29,10 @@ class ZhizhuSpider(scrapy.Spider):
         curr_query=urlparse.urlparse(curr_url)
         curr_params=urlparse.parse_qs(curr_query.query)
         page=curr_params['page'][0]
-        if response.status==200: 
-            hxs = Selector(response)
-            lists=hxs.xpath('//div[@class="list-item"]')
-            for v in lists:
-                try:
+        hxs = Selector(response)
+        lists=hxs.xpath('//div[@class="list-item"]')
+        for v in lists:
+            try:
                     user=ZhizhuItem()
                     names=v.css('.lady-name').re('<a.*?href="(.*?)".*?>(.*?)</a>')
                     tags=v.css('.pic-word  em:nth-child(1)').re('<em>(.*?)</em>')
@@ -57,18 +57,14 @@ class ZhizhuSpider(scrapy.Spider):
                     params=urlparse.parse_qs(result.query)
                     profile_url='https://mm.taobao.com/self/info/model_info_show.htm?user_id='+params['user_id'][0]
                     yield scrapy.Request(profile_url,callback=self.parse_profile,meta={'item':user,'page':page},errback=self.catchError)
-                except:
+            except:
                     fp=codecs.open('/home/www/zhizhu/error.log','a','utf-8')
                     traceback.print_exc(file=fp)
-        else:
-            msg=u'抓取第'+page+u'页信息失败'
-            logger.error(msg)
     def catchError(self,response):
         item=response.meta['item']
         page=response.meta['page']
-        if response.status!=200:
-            msg=u'抓取第'+page+u'页 用户:'+item['name']+u'信息失败'
-            logger.error(msg) 
+        msg=u'抓取第'+page+u'页 用户:'+item['name']+u'信息失败'
+        logger.error(msg) 
             
     def parse_profile(self,response):
         hxs=Selector(response)
@@ -92,4 +88,6 @@ class ZhizhuSpider(scrapy.Spider):
         item['exprince']=exprince[0].strip()
         item['life_img']='https:'+hxs.css('.mm-p-modelCard img::attr(src)').extract()[0]
         item['image_urls']=[item['faceimg'],item['big_img'],item['life_img']]
+        username=lazy_pinyin(item['nicename'])
+        item['pinyin']=''.join(username)
         yield item
