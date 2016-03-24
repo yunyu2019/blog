@@ -15,6 +15,11 @@ SPIDER_MODULES = ['zhizhu.spiders']
 NEWSPIDER_MODULE = 'zhizhu.spiders'
 IMAGES_STORE='/home/www/zhizhu/images'
 DOWNLOAD_DELAY=1
+
+LOG_STDOUT = False
+LOG_LEVEL = 'DEBUG'
+LOG_FILE = '/home/www/zhizhu/zhizhu.log'
+
 MYSQL_DB={
     'host':'127.0.0.1',
     'user':'root',
