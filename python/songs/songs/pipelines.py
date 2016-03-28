@@ -6,10 +6,13 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 import os
 import json
+import time
+import redis
 import codecs
 import logging
-from songs import settings
 import mysql.connector
+from songs import settings
+from pypinyin import lazy_pinyin
 
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
@@ -25,53 +28,42 @@ class SongsPipeline(object):
         line = json.dumps(dict(item), ensure_ascii=False) + "\n"
         self.file.write(line)
         return item
-
-class MyImagesPipeline(object):
-	pass
-	"""
-    def process_item(self,item,spider):
-        images=item['image_urls']
-        if len(images)>0:
-            username=item['pinyin']
-            dir_path='%s/%s' % (settings.IMAGES_STORE,username)
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path)
-            for image_url in images:
-                image_name = image_url.split('/')[-1]
-                file_path = '%s/%s' % (dir_path, image_name)
-                if os.path.exists(file_path):
-                    continue
-                with open(file_path, 'wb') as handle:
-                    response = requests.get(image_url, stream=True)
-                    for block in response.iter_content(1024):
-                        if not block:
-                            break
-                        handle.write(block)
-            return item
-    """    
+   
 class MysqlsavePipeline(object):
-    pass
-    """
     def __init__(self):
         mysql_db=settings.MYSQL_DB
-        self.db = mysql.connector.connect(host=mysql_db['host'],user=mysql_db['root'], password=mysql_db['password'], database=mysql_db['database'],charset=mysql_db['charset'])
-    """
+        self.db = mysql.connector.connect(host=mysql_db['host'],user=mysql_db['user'], password=mysql_db['password'], database=mysql_db['database'],charset=mysql_db['charset'])
+        pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+        self.redis_conn = redis.Redis(connection_pool=pool)
+    
     def process_item(self, item, spider):
-    	pass
-	"""
         try:
             cursor1=self.db.cursor()
-            sql="insert into `user` (`name`,`age`,`profile_url`,`faceimg`,`tags`,`descp`,`city`,`imgnums`,`integral`,`fans`,`signnum`,`rates`,`model_img`,`big_img`,`life_img`,`pinyin`) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            cursor1.execute(sql,[item['name'],item['age'],item['home_url'],item['faceimg'],item['tags'],item['descp'],item['city'],item['imgnums'],item['integral'],item['fans'],item['signnum'],item['rates'],'',item['big_img'],item['life_img'],item['pinyin']])
-            user_id=str(cursor1.lastrowid)
-            sql1="insert into `profile` (`user_id`,`nicename`,`borthday`,`blood`,`school`,`style`,`height`,`weight`,`solid`,`bar`,`shoes`,`exprince`) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            cursor1.execute(sql1,[user_id,item['nicename'],item['borthday'],item['blood'],item['school'],item['style'],item['height'],item['weight'],item['solid'],item['bar'],item['shoes'],item['exprince']])
+            author_id=0
+            keys=lazy_pinyin(item['author']+'_'+item['dynasty'])
+            key=''.join(keys)
+            kwd=''
+            if self.redis_conn.hexists('author',item['author_id']):
+                kwd=item['author_id']
+            elif self.redis_conn.hexists('author',key):
+                kwd=key
+            if kwd!='':
+                authorid=self.redis_conn.hget('author',kwd)
+                if authorid!='0':
+                    author_id=authorid
+                else:
+                    sql="insert into `author` (`name`,`dynasty`,`author_url`,`faceimg`,`descp`,`pinyin`) values(%s,%s,%s,%s,%s,%s)"
+                    cursor1.execute(sql,[item['author'],item['dynasty'],item['author_url'],item['faceimg'],item['author_desc'],item['pinyin']])
+                    author_id=str(cursor1.lastrowid)
+                    self.redis_conn.hset('author',kwd,author_id)
+            created=int(time.time())
+            sql1="insert into `content` (`author_id`,`title`,`created`,`view_url`,`comment_num`,`point`,`content`) values(%s,%s,%s,%s,%s,%s,%s)"
+            cursor1.execute(sql1,[author_id,item['title'],created,item['view_url'],item['comment_nums'],item['point'],item['content']])
             cursor1.close()
         except mysql.connector.Error as e:
-            msg='name:%s 写入数据失败:%s' % (item['nicename'],e)
+            msg=u'view_url:%s 写入数据失败:%s' % (item['view_url'],e)
             logger.error(msg)
             cursor1.close()
         finally:
             cursor1.close()
         return item
-	"""

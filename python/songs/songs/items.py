@@ -21,4 +21,3 @@ class SongsItem(scrapy.Item):
     content=scrapy.Field()
     author_desc=scrapy.Field()
     pinyin=scrapy.Field()
-    signnum=scrapy.Field()

@@ -50,7 +50,7 @@ class MyImagesPipeline(object):
 class MysqlsavePipeline(object):
     def __init__(self):
         mysql_db=settings.MYSQL_DB
-        self.db = mysql.connector.connect(host=mysql_db['host'],user=mysql_db['root'], password=mysql_db['password'], database=mysql_db['database'],charset=mysql_db['charset'])
+        self.db = mysql.connector.connect(host=mysql_db['host'],user=mysql_db['user'], password=mysql_db['password'], database=mysql_db['database'],charset=mysql_db['charset'])
     
     def process_item(self, item, spider):
         try:
@@ -62,7 +62,7 @@ class MysqlsavePipeline(object):
             cursor1.execute(sql1,[user_id,item['nicename'],item['borthday'],item['blood'],item['school'],item['style'],item['height'],item['weight'],item['solid'],item['bar'],item['shoes'],item['exprince']])
             cursor1.close()
         except mysql.connector.Error as e:
-            msg='name:%s 写入数据失败:%s' % (item['nicename'],e)
+            msg=u'name:%s 写入数据失败:%s' % (item['nicename'],e)
             logger.error(msg)
             cursor1.close()
         finally:

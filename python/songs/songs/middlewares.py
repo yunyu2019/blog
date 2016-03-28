@@ -25,7 +25,7 @@ class MyRetryMiddleware(RetryMiddleware):
     def _retry(self, request, reason, spider):
         retries = request.meta.get('retry_times', 0) + 1
         if retries <= self.max_retry_times:
-            logger.debug("Retrying %(request)s (failed %(retries)d times): %(reason)s",
+            self.err_logger.debug("Retrying %(request)s (failed %(retries)d times): %(reason)s",
                          {'request': request, 'retries': retries, 'reason': reason},
                          extra={'spider': spider})
             retryreq = request.copy()
@@ -34,6 +34,6 @@ class MyRetryMiddleware(RetryMiddleware):
             retryreq.priority = request.priority + self.priority_adjust
             return retryreq
         else:
-            logger.error("Gave up retrying %(request)s (failed %(retries)d times): %(reason)s",
+            self.err_logger.error("Gave up retrying %(request)s (failed %(retries)d times): %(reason)s",
                          {'request': request, 'retries': retries, 'reason': reason},
                          extra={'spider': spider})

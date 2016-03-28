@@ -14,9 +14,11 @@ BOT_NAME = 'songs'
 SPIDER_MODULES = ['songs.spiders']
 NEWSPIDER_MODULE = 'songs.spiders'
 
+DOWNLOAD_DELAY=1
 
 ITEM_PIPELINES = {
     'songs.pipelines.SongsPipeline': 300,
+    'songs.pipelines.MysqlsavePipeline': 350
 }
 
 DOWNLOADER_MIDDLEWARES = {
@@ -24,6 +26,14 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddleware.retry.RetryMiddleware' : None,
     'songs.middlewares.RandomUserAgentMiddleware' :400,
     'songs.middlewares.MyRetryMiddleware' :500,
+}
+
+MYSQL_DB={
+    'host':'127.0.0.1',
+    'user':'root',
+    'password':'123456',
+    'database':'songs',
+    'charset':'utf8'
 }
 
 USER_AGENTS=[

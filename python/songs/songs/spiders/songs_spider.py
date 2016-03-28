@@ -2,14 +2,15 @@
 
 import re
 import redis
-import urlparse
-import logging
 import codecs
 import scrapy
+import logging
+import urlparse
 import traceback
+from songs.items import *
 from pypinyin import lazy_pinyin
 from scrapy.selector import Selector
-from songs.items import *
+
 
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
@@ -26,16 +27,16 @@ class SongsSpider(scrapy.Spider):
     ]
 
     def __init__(self, *a, **kw):
-	super(SongsSpider, self).__init__(*a, **kw)
-	try:
-	     pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
-	     self.redis_conn = redis.Redis(connection_pool=pool)
-	except redis.RedisError as e:
-	     msg='redis connect error %s' % str(e)
-	     logger.error(msg)
+        super(SongsSpider, self).__init__(*a, **kw)
+        try:
+             pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+             self.redis_conn = redis.Redis(connection_pool=pool)
+        except redis.RedisError as e:
+             msg='redis connect error %s' % str(e)
+             logger.error(msg)
 
     def parse(self,response):
-	curr_url=response.url
+        curr_url=response.url
         curr_query=urlparse.urlparse(curr_url)
         curr_params=urlparse.parse_qs(curr_query.query)
         page=curr_params['p'][0]
@@ -52,24 +53,24 @@ class SongsSpider(scrapy.Spider):
                     m=re.search('(\d\.?\d).*?(\d+)',comments)
                     point=0
                     nums=0
-		    author_id=0
+                    author_id=0
                     grs=m.groups()
                     if len(grs)>1:
                         point=grs[0]
                         nums=grs[1]
-		    if author_url!='':
-			m1=re.search('(\d+)',author_url)
-			author_id=m1.group(1)
-		    song['author_id']=author_id
+                    if author_url!='':
+                        m1=re.search('(\d+)',author_url)
+                        author_id=m1.group(1)
+                    song['author_id']=author_id
                     song['author_url']=author_url
                     song['view_url']  =view_url
                     song['title']     =title
                     song['comment_nums']      =nums
                     song['point']     =point
-		    view_url='http://so.gushiwen.org'+view_url
+                    view_url='http://so.gushiwen.org'+view_url
                     yield scrapy.Request(view_url,callback=self.parse_song,meta={'item':song,'page':page},errback=self.catchError)
             except:
-                    fp=codecs.open('/home/www/zhizhu/error.log','a','utf-8')
+                    fp=codecs.open('/home/www/songs/error.log','a','utf-8')
                     traceback.print_exc(file=fp)
     def catchError(self,response):
         item=response.meta['item']
@@ -84,7 +85,7 @@ class SongsSpider(scrapy.Spider):
         cont=hxs.xpath('//div[@class="son2"]')[1]
         dynasty=cont.xpath('p[1]/text()').extract()[0].strip()
         author_temp=cont.xpath('p[2]/a/text()').extract()
-	author=author_temp[0] if author_temp else cont.xpath('p[2]/text()').extract()[0]
+        author=author_temp[0] if author_temp else cont.xpath('p[2]/text()').extract()[0]
         strs=cont.extract()
         compiles=re.compile(r'</span></p>(.*)?.*?</div>',re.S)
         m=re.search(compiles,strs)
@@ -92,11 +93,19 @@ class SongsSpider(scrapy.Spider):
         item['dynasty']=dynasty
         item['author'] =author
         item['content']=content
-	flag=item['author_url']!='' and not self.redis_conn.hexists('author',item['author_id'])
+        flag=item['author_url']!='' and not self.redis_conn.hexists('author',item['author_id'])
         if flag:
-	    author_url='http://so.gushiwen.org'+item['author_url']
+            author_url='http://so.gushiwen.org'+item['author_url']
             yield scrapy.Request(author_url,callback=self.parse_author,meta={'item':item,'page':page},errback=self.catchError)
-        else: 
+        else:
+            
+            if not self.redis_conn.hexists('author',item['author_id']):
+                item['faceimg']=''
+                item['author_desc']='' 
+                keys=lazy_pinyin(item['author']+'_'+item['dynasty'])
+                key=''.join(keys)
+                item['pinyin']=key.split('_')[0]
+                self.redis_conn.hsetnx('author',key,0)
             yield item
     def parse_author(self,response):
         hxs=Selector(response)
@@ -104,10 +113,13 @@ class SongsSpider(scrapy.Spider):
         page=response.meta['page']
         cont=hxs.xpath('//div[@class="son2"]')[1]
         faceimg=cont.xpath('div/img/@src').extract()[0].strip()
-        author_desc=cont.xpath('text()').extract()[1].strip()
+        strs=cont.extract()
+        compiles=re.compile(r'<img.*?>.*?</div>(.*)?</div>',re.S)
+        m=re.search(compiles,strs)
+        author_desc=m.group(1).strip()
         item['faceimg']=faceimg
-        item['author_desc']=author_desc if author_desc!='' else ''
+        item['author_desc']=author_desc
         songname=lazy_pinyin(item['author'])
         item['pinyin']=''.join(songname)
-	self.redis_conn.hset('author',item['author_id'],0)
+        self.redis_conn.hsetnx('author',item['author_id'],0)
         return  item

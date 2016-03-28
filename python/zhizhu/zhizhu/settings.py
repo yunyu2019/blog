@@ -25,7 +25,7 @@ MYSQL_DB={
     'user':'root',
     'password':'123456',
     'database':'taobao',
-    'charset':'utf-8'
+    'charset':'utf8'
 }
 ITEM_PIPELINES = {
     'zhizhu.pipelines.ZhizhuPipeline': 300,
