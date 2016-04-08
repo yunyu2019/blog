@@ -13,12 +13,13 @@ BOT_NAME = 'songs'
 
 SPIDER_MODULES = ['songs.spiders']
 NEWSPIDER_MODULE = 'songs.spiders'
-
 DOWNLOAD_DELAY=1
+CONCURRENT_REQUESTS=10
 
 ITEM_PIPELINES = {
     'songs.pipelines.SongsPipeline': 300,
-    'songs.pipelines.MysqlsavePipeline': 350
+    'songs.pipelines.AuthorPipeline': 350,
+    'songs.pipelines.ArticlePipeline':500
 }
 
 DOWNLOADER_MIDDLEWARES = {
