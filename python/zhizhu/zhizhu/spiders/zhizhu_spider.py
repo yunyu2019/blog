@@ -6,6 +6,7 @@ import urlparse
 import logging
 import codecs
 import traceback
+from functions import *
 from pypinyin import lazy_pinyin
 from scrapy.selector import Selector
 from zhizhu.items import *
@@ -35,24 +36,23 @@ class ZhizhuSpider(scrapy.Spider):
             try:
                     user=ZhizhuItem()
                     names=v.css('.lady-name').re('<a.*?href="(.*?)".*?>(.*?)</a>')
-                    tags=v.css('.pic-word  em:nth-child(1)').re('<em>(.*?)</em>')
+                    tags=v.css('.pic-word  em:nth-child(1)').extract()
                     faces=v.css('.lady-avatar').re('<a.*?href="(.*?)".*?<img src="(.*?)">*?')
-                    compiles=re.compile('<p class="description">(.*?)</p>',re.S)
-                    descps=v.css('.description').re(compiles)
+                    descps=v.css('.description').extract()
                     user['name']=names[1].strip()
                     user['profile_url']='https:'+names[0].strip()
                     user['home_url']   ='https:'+faces[0]
                     user['faceimg']    ='https:'+faces[1]
                     user['age']        =v.css('.top strong::text').extract()[0]
                     user['city']       =v.css('.top span::text').extract()[0]
-                    user['tags']       =tags[0]
+                    user['tags']       =filterHtml(tags[0]) if tags else ''
                     user['fans']       =v.css('.pic-word strong::text')[1].extract()
                     user['big_img']    ='https:'+v.css('.w610 img::attr(data-ks-lazyload)').extract()[0]
                     user['integral']   =v.css('.popularity dd::text').extract()[1].strip()
                     user['rates']      =v.css('.info-detail li strong::text')[1].extract()
                     user['imgnums']    =v.css('.info-detail li strong::text')[2].extract()
                     user['signnum']    =v.css('.info-detail li strong::text')[3].extract()
-                    user['descp']      =descps[0].strip()
+                    user['descp']      =filterHtml(descps[0]) if descps else ''
                     result=urlparse.urlparse(user['profile_url'])
                     params=urlparse.parse_qs(result.query)
                     profile_url='https://mm.taobao.com/self/info/model_info_show.htm?user_id='+params['user_id'][0]
@@ -70,23 +70,32 @@ class ZhizhuSpider(scrapy.Spider):
         hxs=Selector(response)
         item=response.meta['item']
         page=response.meta['page']
-        lists=hxs.css('.mm-p-base-info li span').re('<span>(.*?)</span>')
-        profiles=hxs.css('.mm-p-base-info li p').re('<p>(.*?)</p>')
-        compiles=re.compile('<p>(.*?)</p>',re.S)
-        exprince=hxs.css('.mm-p-experience-info p').re(compiles)
+        cont=hxs.xpath('//div[@class="mm-p-info mm-p-base-info"]')
+        ls=cont.xpath('ul/li/span').extract()
+        ls1=cont.xpath('ul/li/p').extract()
+        lists=map(filterHtml,ls)
+        profiles=map(filterHtml,ls1)
+        exprince=hxs.xpath('//div[@class="mm-p-info mm-p-experience-info"]/p').extract()
         item['nicename']=lists[0].strip()
-        item['borthday']=lists[1].strip()
+        item['borthday']=lists[1].replace(u'\xa0','')
         item['job']     =lists[3].strip(u'型')
-        item['blood']   =lists[4].strip(u'型')	 
-        item['school']  =lists[5].strip()
+        item['blood']   =lists[4].strip(u'型')
+        item['school']  =''
+        item['specialty']  =''
+        if lists[5]!='':
+            m=re.split(u'\xa0{2,}',lists[5])
+            if len(m)>1:
+                item['school']  =m[0]
+                item['specialty']  =m[1]
         item['style']   =lists[6].strip()
         item['height']  =profiles[0].strip('CM')
         item['weight']  =profiles[1].strip('KG')
         item['solid']   =profiles[2].strip()
-        item['bar']     =profiles[3].strip()
+        item['bar']     =bar(profiles[3])
         item['shoes']   =profiles[4].strip(u'码')
-        item['exprince']=exprince[0].strip()
-        item['life_img']='https:'+hxs.css('.mm-p-modelCard img::attr(src)').extract()[0]
+        item['exprince']=filterHtml(exprince[0])
+        left_img=hxs.xpath('//div[@class="mm-p-modelCard"]/a/img/@src').extract()
+        item['life_img']='https:'+left_img[0] if left_img else ''
         item['image_urls']=[item['faceimg'],item['big_img'],item['life_img']]
         username=lazy_pinyin(item['nicename'])
         item['pinyin']=''.join(username)

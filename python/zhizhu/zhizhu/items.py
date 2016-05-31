@@ -31,6 +31,7 @@ class ZhizhuItem(scrapy.Item):
     job=scrapy.Field()
     blood=scrapy.Field()
     school=scrapy.Field()
+    specialty=scrapy.Field()
     style=scrapy.Field()
     height=scrapy.Field()
     weight=scrapy.Field()

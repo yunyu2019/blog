@@ -35,7 +35,9 @@ ITEM_PIPELINES = {
 
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddleware.useragent.UserAgentMiddleware' : None,
-    'zhizhu.middlewares.RandomUserAgentMiddleware' :400
+    'scrapy.downloadermiddleware.retry.RetryMiddleware' : None,
+    'zhizhu.middlewares.RandomUserAgentMiddleware' :400,
+    'zhizhu.middlewares.MyRetryMiddleware' :500
 }
 
 USER_AGENTS=[
