@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import sys
 import random
 import logging
 from songs.settings import USER_AGENTS
@@ -25,8 +26,8 @@ class MyRetryMiddleware(RetryMiddleware):
     def _retry(self, request, reason, spider):
         retries = request.meta.get('retry_times', 0) + 1
         if retries <= self.max_retry_times:
-            self.err_logger.debug("Retrying %(request)s (failed %(retries)d times): %(reason)s",
-                         {'request': request, 'retries': retries, 'reason': reason},
+            self.err_logger.debug(u"Retrying %(request)s (failed %(retries)d times): %(reason)s",
+                         {'request': request, 'retries': retries,'reason': reason},
                          extra={'spider': spider})
             retryreq = request.copy()
             retryreq.meta['retry_times'] = retries
@@ -34,6 +35,6 @@ class MyRetryMiddleware(RetryMiddleware):
             retryreq.priority = request.priority + self.priority_adjust
             return retryreq
         else:
-            self.err_logger.error("Gave up retrying %(request)s (failed %(retries)d times): %(reason)s",
+            self.err_logger.error(u"Gave up retrying %(request)s (failed %(retries)d times): %(reason)s",
                          {'request': request, 'retries': retries, 'reason': reason},
                          extra={'spider': spider})

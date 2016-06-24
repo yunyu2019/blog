@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import re
-import codecs
 import scrapy
 import logging
 import urlparse
-import traceback
 from songs.items import SongsItem
 from pypinyin import lazy_pinyin
 from scrapy.selector import Selector
@@ -55,21 +53,22 @@ class SongsSpider(scrapy.Spider):
                 song['title']     =title
                 song['comment_nums']      =nums
                 song['point']     =point
+                song['page']=page
                 view_url='http://so.gushiwen.org'+view_url
-                yield scrapy.Request(view_url,callback=self.parse_song,meta={'item':song,'page':page},errback=self.catchError)
+                yield scrapy.Request(view_url,callback=self.parse_song,meta={'item':song},errback=self.catchError)
             except:
-                    fp=codecs.open('/home/www/songs/error.log','a','utf-8')
-                    traceback.print_exc(file=fp)
+                    msg=u"page:%s urls:%s message:%s" % (page,curr_url,str(e))
+                    logger.error(msg)
     def catchError(self,response):
         item=response.meta['item']
-        page=response.meta['page']
-        msg=u'抓取第'+page+u'页 用户:'+item['name']+u'信息失败'
+        page=item['page']
+        msg=u"page:%s message:%s" %(page,response.url)
         logger.error(msg) 
             
     def parse_song(self,response):
         hxs=Selector(response)
         item=response.meta['item']
-        page=response.meta['page']
+        page=item['page']
         cont=hxs.xpath('//div[@class="son2"]')[1]
         dynasty=cont.xpath('p[1]/text()').extract()
         dynasty=dynasty[0] if dynasty else ''

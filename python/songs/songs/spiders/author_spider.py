@@ -2,15 +2,12 @@
 
 import re
 import redis
-import codecs
 import scrapy
 import logging
 import urlparse
-import traceback
 from songs.items import AuthorItem
 from pypinyin import lazy_pinyin
 from scrapy.selector import Selector
-
 
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
@@ -36,8 +33,12 @@ class AuthorSpider(scrapy.Spider):
         for v in lists:
             try:
                     author=AuthorItem()
-                    author_url=v.xpath('a[1]/@href').extract()
-                    author_url=author_url[0] if author_url  else ''
+                    author_urls=v.xpath('a[1]/@href').extract()
+                    if author_urls:
+                        author_url=author_urls[0]
+                    else:
+                        author_urls=v.xpath('p[1]/a/@href').extract()
+                        author_url=author_urls[0] if author_urls else ''
                     thumb_img=v.xpath('a[1]/img/@src').extract()
                     thumb_img=thumb_img[0] if thumb_img else ''
                     title=v.xpath('p[1]/a/text()').extract()[0]
@@ -55,54 +56,72 @@ class AuthorSpider(scrapy.Spider):
                     author['author_id'] =author_id
                     author['author_url']=author_url
                     author['dynasty']=dynasty
-                    view_url='http://so.gushiwen.org'+author_url
-                    yield scrapy.Request(view_url,callback=self.parse_author,meta={'item':author,'page':page},errback=self.catchError)
-            except:
-                    fp=codecs.open('/home/www/songs/error.log','a','utf-8')
-                    traceback.print_exc(file=fp)
+                    author['page']=page
+                    author_name=lazy_pinyin(author['author'])
+                    author['pinyin']=''.join(author_name)
+                    if author_url:
+                        view_url='http://so.gushiwen.org'+author_url
+                        yield scrapy.Request(view_url,callback=self.parse_author,meta={'item':author},errback=self.catchError)
+                    else:
+                        yield author
+            except Exception, e:
+                    msg=u"page:%s urls:%s message:%s" % (page,curr_url,str(e))
+                    logger.error(msg)
     def catchError(self,response):
         item=response.meta['item']
-        page=response.meta['page']
-        msg=u'抓取第%s页 用户:%s信息失败' %(page,item['author'])
+        page=item['page']
+        msg=u"page:%s message:%s" %(page,response.url)
         logger.error(msg) 
             
     def parse_author(self,response):
         hxs=Selector(response)
         item=response.meta['item']
-        page=response.meta['page']
+        page=item['page']
         cont=hxs.xpath('//div[@class="son2"]')[1]
-        strs=cont.extract()
-        compiles=re.compile(r'<img.*?>.*?</div>(.*)?</div>',re.S)
-        m=re.search(compiles,strs)
-        author_desc=m.group(1).strip()
-        item['author_desc']=author_desc
-        author_name=lazy_pinyin(item['author'])
-        item['pinyin']=''.join(author_name)
+        author_desc=''
+        m=cont.xpath('*/text()').extract()
+        if m:
+        	m1=[i.strip() for i in m if i.strip()]
+        	if m1:
+        		author_desc=''.join(m1)
+        	else:
+        		s=cont.xpath('text()').extract()
+        		s1=[i.strip() for i in s if i.strip()]
+        		author_desc=s1[0]
+        else:
+        	s=cont.xpath('text()').extract()
+        	author_desc=s[0].strip()
         relation_urls=hxs.xpath('//div[@class="son5"]/p[1]/a/@href').extract()
+        item['author_desc']=author_desc  
         item['relation_urls']=relation_urls if relation_urls else ''
         if relation_urls:
             for i in relation_urls:
                 view_url='http://so.gushiwen.org'+i
-                yield scrapy.Request(view_url,callback=self.parse_author_profile,meta={'item':item,'page':page,'curr_url':i},errback=self.catchError)
+                yield scrapy.Request(view_url,callback=self.parse_author_profile,meta={'item':item},errback=self.catchError)
         else:
             yield item
         
     def parse_author_profile(self,response):
         item=response.meta['item']
-        page=response.meta['page']
-        curr_url=response.meta['curr_url']
+        page=item['page']
+        query=urlparse.urlparse(response.url)
+        curr_url=query.path
         hxs=Selector(response)
         cont=hxs.xpath('//div[@class="shileft"]')
-        title =cont.xpath('./div[@class="son1"]/h1/text()').extract()[0].strip()
-        editor=cont.xpath('./div[@class="shangxicont"]/p[1]/text()').extract()
-        strs=cont.xpath('./div[@class="shangxicont"]').extract()[0]
-        rule=re.compile('<div class="shangxicont".*?</p>?(.*)?.*<p style=".*?color:#919090.*?',re.S)
-        m=re.search(rule,strs)
-        content=m.group(1).strip()
-        editor=editor[0] if editor else ''
-        item['title']=title
-        item['editor']=editor
-        item['content']=content
-        item['view_url']=curr_url
+        try:
+            title =cont.xpath('./div[@class="son1"]/h1/text()').extract()[0].strip()
+            editor=cont.xpath('./div[@class="shangxicont"]/p[1]/text()').extract()
+            strs=cont.xpath('./div[@class="shangxicont"]').extract()[0]
+            rule=re.compile('<div class="shangxicont".*?</p>?(.*)?.*<p style=".*?color:#919090.*?',re.S)
+            m=re.search(rule,strs)
+            content=m.group(1).strip()
+            editor=editor[0] if editor else ''
+            item['title']=title
+            item['editor']=editor
+            item['content']=content
+            item['view_url']=curr_url
+        except Exception, e:
+            msg=u"page:%s urls:%s message:%s" % (page,response.url,str(e))
+            logger.error(msg)
         return item
         

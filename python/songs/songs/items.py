@@ -18,6 +18,12 @@ class SongsItem(scrapy.Item):
     author=scrapy.Field()
     content=scrapy.Field()
     pinyin=scrapy.Field()
+    page=scrapy.Field()
+    relation_urls=scrapy.Field()
+    rel_title=scrapy.Field()
+    editor=scrapy.Field()
+    rel_content=scrapy.Field()
+    rel_url=scrapy.Field()
 
 class AuthorItem(scrapy.Item):
     author_url=scrapy.Field()
@@ -32,4 +38,4 @@ class AuthorItem(scrapy.Item):
     editor=scrapy.Field()
     content=scrapy.Field()
     view_url=scrapy.Field()
-    
+    page=scrapy.Field()

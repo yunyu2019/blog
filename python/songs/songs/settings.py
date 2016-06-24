@@ -13,8 +13,12 @@ BOT_NAME = 'songs'
 
 SPIDER_MODULES = ['songs.spiders']
 NEWSPIDER_MODULE = 'songs.spiders'
-DOWNLOAD_DELAY=1
+DOWNLOAD_DELAY=0
 CONCURRENT_REQUESTS=10
+
+LOG_STDOUT = False
+LOG_LEVEL = 'DEBUG'
+LOG_FILE = '/home/www/songs/songs.log'
 
 ITEM_PIPELINES = {
     'songs.pipelines.SongsPipeline': 300,
