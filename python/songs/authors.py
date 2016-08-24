@@ -5,6 +5,7 @@
 # @descp   : 抓取单页的作者信息
 
 import re
+import sys
 import json
 import codecs
 import urlparse
@@ -12,7 +13,9 @@ import requests
 from bs4 import BeautifulSoup
 from pypinyin import lazy_pinyin
 
-urls="http://so.gushiwen.org/author_858.aspx"
+ids=sys.argv[1]
+spath=sys.argv[2]
+urls="http://so.gushiwen.org/author_%s.aspx" % ids
 req=requests.get(urls)
 s=urlparse.urlparse(urls)
 author_url=s.path
@@ -44,26 +47,31 @@ res1=soup.find_all('div',attrs={'class':'son5'})
 for v in res1:
 	a=v.find('p').findChild('a')
 	relation_urls.append(a['href'])
-item['relation_url']=relation_urls
-for v in res1:
-	a=v.find('p').findChild('a')
-	item['view_url']=a['href']
-	req2=requests.get('http://so.gushiwen.org'+item['view_url'])
-	cont2=req2.content
-	soup2=BeautifulSoup(cont2,'lxml')
-	son1 =soup2.find_all('div',attrs={'class':'son1'})
-	title=son1[1].findChild('h1').get_text()
-	strs=soup2.find('div',attrs={"class":"shangxicont"})
-	editor=strs.find('p').get_text()
-	rule=re.compile('<div class="shangxicont".*?</p>?(.*)?.*<p style=".*?color:#919090.*?',re.S)
-	m=re.search(rule,cont2)
-	content=m.group(1).strip() if m else ''
-	item['title']=title
-	item['editor']=editor
-	item['content']=content
-	fp= codecs.open('datas.json', 'a', encoding='utf-8')
+item['relation_urls']=relation_urls
+if relation_urls:
+	for v in res1:
+		a=v.find('p').findChild('a')
+		item['view_url']=a['href']
+		req2=requests.get('http://so.gushiwen.org'+item['view_url'])
+		cont2=req2.content
+		soup2=BeautifulSoup(cont2,'lxml')
+		son1 =soup2.find_all('div',attrs={'class':'son1'})
+		title=son1[1].findChild('h1').get_text()
+		strs=soup2.find('div',attrs={"class":"shangxicont"})
+		editor=strs.find('p').get_text()
+		rule=re.compile('<div class="shangxicont".*?</p>?(.*)?.*<p style=".*?color:#919090.*?',re.S)
+		m=re.search(rule,cont2)
+		content=m.group(1).strip() if m else ''
+		item['title']=title
+		item['editor']=editor
+		item['content']=content
+		fp= codecs.open(spath, 'a', encoding='utf-8')
+		line = json.dumps(item, ensure_ascii=True) + "\n"
+		fp.write(line)
+		fp.close()
+else:
+	fp= codecs.open(spath, 'a', encoding='utf-8')
 	line = json.dumps(item, ensure_ascii=True) + "\n"
 	fp.write(line)
-
-fp.close()
+	fp.close()
 

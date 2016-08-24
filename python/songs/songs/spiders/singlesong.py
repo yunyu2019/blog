@@ -4,19 +4,22 @@
 # @Author  : Yunyu2019 (yunyu2010@yeah.net)
 # @descp   : instead songs_spider.py
 
+import os
 import re
 import scrapy
 import logging
 import urlparse
-from songs.items import SongsItem
 from pypinyin import lazy_pinyin
-from scrapy.selector import Selector
 from scrapy.http import Request
+from songs.items import SongsItem
+from songs.settings import LOG_FILE
+from scrapy.selector import Selector
 
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
 logger.setLevel(logging.ERROR)
-handler=logging.FileHandler('/home/www/songs/error.log',mode='a',encoding='utf-8')
+log_path=os.path.dirname(LOG_FILE)+'/error.log'
+handler=logging.FileHandler(log_path,mode='a',encoding='utf-8')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -24,7 +27,7 @@ class SingleSongSpider(scrapy.Spider):
     name='singlesong'
     allowed_domains=['so.gushiwen.org']
     start_urls = [
-        "http://so.gushiwen.org/view_%d.aspx" % d for d in range(1,1001)
+        "http://so.gushiwen.org/view_%d.aspx" % d for d in range(73049,73052)
     ]
 
     def parse(self,response):

@@ -5,10 +5,13 @@
 # @Link    : 
 # @descp   : The document description
 
-import sys
 import re
+import sys
+import json
+import codecs
 
-def ansyLog(data):
+def ansyArticle(data):
+	"""分析错误日志"""
 	ids=[]
 	with open(data,'r') as fp:
 		i=0
@@ -21,7 +24,27 @@ def ansyLog(data):
 				continue
 	return ids
 
+def ansyAuthor(data):
+	"""分析json文件"""
+	ids=[]
+	with open(data,'r') as fp:
+		for line in fp.readlines():
+			item=json.loads(line)
+			if item['author_id'] not in ids:
+				ids.append(int(item['author_id']))
+	
+	return ids,max(ids)
+
+
 if __name__ == '__main__':
 	data=sys.argv[1]
-	records=ansyLog(data)
-	print records
+	records=ansyArticle(data)
+	cont={"article":records}
+	fp=codecs.open('record.log', 'a', encoding='utf-8')
+	line = json.dumps(cont, ensure_ascii=False) + "\n"
+	fp.write(line)
+	fp.close()
+	"""
+	ids,max_id=ansyAuthor(data)
+	print ids,max_id
+	"""

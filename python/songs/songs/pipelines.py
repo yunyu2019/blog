@@ -17,7 +17,8 @@ from pypinyin import lazy_pinyin
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
 logger.setLevel(logging.ERROR)
-handler=logging.FileHandler('/home/www/songs/error.log',mode='a',encoding='utf-8')
+log_path=os.path.dirname(settings.LOG_FILE)+'/mysql_error.log'
+handler=logging.FileHandler(log_path,mode='a',encoding='utf-8')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 

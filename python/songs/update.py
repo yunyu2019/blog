@@ -15,7 +15,8 @@ import mysql.connector
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
 logger.setLevel(logging.ERROR)
-handler=logging.FileHandler('/home/www/mysql_error.log',mode='a',encoding='utf-8')
+root='{app}/mysql_error.log'.format(app=os.path.dirname(os.path.realpath(__file__)))
+handler=logging.FileHandler(root,mode='a',encoding='utf-8')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 try:
@@ -24,19 +25,19 @@ except mysql.connector.Error as e:
 	msg=u'数据库连接失败:%s' % str(e)
 	logger.error(msg)
 
-def update(data,view_url,song_id):
+def updateContById(data,view_url,song_id):
 	with open(data,'r') as fp:
 		for line in fp.readlines():
 			item=json.loads(line)
 			cursor1=db.cursor()
 			if item['view_url']==view_url:
+				created=int(time.time())
 				try:
-					created=int(time.time())
 					sql1="update `content` set `title`=%s,`created`=%s,`view_url`=%s,`comment_num`=%s,`point`=%s,`content`=%s where id="+song_id
 					cursor1.execute(sql1,[item['title'],created,item['view_url'],item['comment_nums'],item['point'],item['content']])
 					cursor1.close()
 				except mysql.connector.Error as e:
-					msg=u'view_url:%s 写入数据失败:%s' % (item['view_url'],e)
+					msg=u'view_url:{url} 写入数据表{table}失败:{message}' .format(url=item['view_url'],table='content',message=e)
 					logger.error(msg)
 					cursor1.close()
 				finally:
@@ -64,7 +65,7 @@ def updateDynasty():
 		print '%s-%s' % (start,end)
 		i+=1
 
-def updateContent():
+def updateContDynasty():
 	cursor1=db.cursor()
 	i=1
 	while i<74:
@@ -96,13 +97,50 @@ def updateContent():
 		print '%s-%s' % (start,end)
 		i+=1
 
+def updateContRelationUrls(data):
+	try:
+		pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+		redis_conn = redis.Redis(connection_pool=pool)
+	except redis.RedisError as e:
+		msg='redis connect error %s' % str(e)
+		logger.error(msg)
+	with open(data,'r') as fp:
+		for line in fp.readlines():
+			item=json.loads(line)
+			if item['relation_urls'] and redis_conn.hexists('article',item['view_url']):
+				cursor1=db.cursor()
+				relation_urls=','.join(item['relation_urls'])
+				article_id=redis_conn.hget('article',item['view_url'])
+				sql='update `content` set `relation_urls`=%s where id=%s'
+				cursor1.execute(sql,(relation_urls,article_id))
+				print '%s-%s update sucess' % (item['view_url'],article_id)
+
+def updateContRelationById(data,view_url,ids):
+	try:
+		pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+		redis_conn = redis.Redis(connection_pool=pool)
+	except redis.RedisError as e:
+		msg='redis connect error %s' % str(e)
+		logger.error(msg)
+	with open(data,'r') as fp:
+		for line  in fp.readlines():
+			item=json.loads(line)
+			if item['rel_url']==view_url:
+				cursor1=db.cursor()
+				created=int(time.time())
+				article_id=redis_conn.hget('article',item['view_url'])
+				sql='update `content_relation` set `cont_id`=%s,`title`=%s,`descrption`=%s,`created`=%s,`view_url`=%s,`editor`=%s where id=%s'
+				cursor1.execute(sql,(article_id,item['rel_title'],item['rel_content'],created,item['rel_url'],item['editor'],ids))
+			else:
+				continue
+
+
 if __name__ == '__main__':
-	"""
-	data=sys.argv[1]
-	view_url=sys.argv[2]
-	song_id=sys.argv[3]
-	update(data,view_url,song_id)
-	"""
 	#updateDynasty()
-	updateContent()
-		
+	#updateContDynasty()
+	data=sys.argv[1]
+	#updateContRelationUrls(data)
+	view_url=sys.argv[2]
+	ids=sys.argv[3]
+	#updateContById(data,view_url,ids)
+	updateContRelationById(data,view_url,ids)

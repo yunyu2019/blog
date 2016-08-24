@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import scrapy
 import logging
 import urlparse
-from songs.items import SongsItem
 from pypinyin import lazy_pinyin
+from songs.items import SongsItem
+from songs.settings import LOG_FILE
 from scrapy.selector import Selector
 
 logger=logging.getLogger('songs')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
 logger.setLevel(logging.ERROR)
-handler=logging.FileHandler('/home/www/songs/error.log',mode='a',encoding='utf-8')
+log_path=os.path.dirname(LOG_FILE)+'/error.log'
+handler=logging.FileHandler(log_path,mode='a',encoding='utf-8')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
