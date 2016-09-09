@@ -1,28 +1,28 @@
 # -*- coding: utf-8 -*-
-
+import os
 import scrapy
 import re
 import urlparse
 import logging
-import codecs
-import traceback
 from functions import *
 from pypinyin import lazy_pinyin
 from scrapy.selector import Selector
-from zhizhu.items import *
+from taobaomm.settings import LOG_FILE
+from taobaomm.items import MMItem
 
-logger=logging.getLogger('zhizhu')
+logger=logging.getLogger('taobaomm')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
 logger.setLevel(logging.ERROR)
-handler=logging.FileHandler('/home/www/zhizhu/error.log',mode='a',encoding='utf-8')
+log_path=os.path.dirname(LOG_FILE)+'/error.log'
+handler=logging.FileHandler(log_path,mode='a',encoding='utf-8')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-class ZhizhuSpider(scrapy.Spider):
-    name='zhizhu'
+class TaobaoSpider(scrapy.Spider):
+    name='taobao'
     allowed_domains=['mm.taobao.com']
     start_urls = [
-        "https://mm.taobao.com/json/request_top_list.htm?page=%d" % d for d in range(1001,1101)
+        "https://mm.taobao.com/json/request_top_list.htm?page=%d" % d for d in range(1,5)
     ]
     
     def parse(self,response):
@@ -34,7 +34,7 @@ class ZhizhuSpider(scrapy.Spider):
         lists=hxs.xpath('//div[@class="list-item"]')
         for v in lists:
             try:
-                    user=ZhizhuItem()
+                    user=MMItem()
                     names=v.css('.lady-name').re('<a.*?href="(.*?)".*?>(.*?)</a>')
                     tags=v.css('.pic-word  em:nth-child(1)').extract()
                     faces=v.css('.lady-avatar').re('<a.*?href="(.*?)".*?<img src="(.*?)">*?')
@@ -57,9 +57,9 @@ class ZhizhuSpider(scrapy.Spider):
                     params=urlparse.parse_qs(result.query)
                     profile_url='https://mm.taobao.com/self/info/model_info_show.htm?user_id='+params['user_id'][0]
                     yield scrapy.Request(profile_url,callback=self.parse_profile,meta={'item':user,'page':page},errback=self.catchError)
-            except:
-                    fp=codecs.open('/home/www/zhizhu/error.log','a','utf-8')
-                    traceback.print_exc(file=fp)
+            except Exception, e:
+                    msg=u"urls:%s message:%s" % (curr_url,str(e))
+                    logger.error(msg)
     def catchError(self,response):
         item=response.meta['item']
         page=response.meta['page']

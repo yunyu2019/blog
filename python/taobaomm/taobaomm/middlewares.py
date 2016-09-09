@@ -1,7 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import os
 import random
-from zhizhu.settings import USER_AGENTS
+import logging
+from taobaomm.settings import USER_AGENTS,LOG_FILE
 from scrapy.downloadermiddlewares.retry import RetryMiddleware
 
 class RandomUserAgentMiddleware(object):
@@ -14,10 +16,11 @@ class RandomUserAgentMiddleware(object):
 class MyRetryMiddleware(RetryMiddleware):
     def __init__(self,*a, **kw):
         super(MyRetryMiddleware, self).__init__(*a, **kw)
-        logger=logging.getLogger('songs')
+        logger=logging.getLogger('taobaomm')
         formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
         logger.setLevel(logging.ERROR)
-        handler=logging.FileHandler('/home/www/zhizhu/error.log',mode='a',encoding='utf-8')
+        log_path=os.path.dirname(LOG_FILE)+'/error.log'
+        handler=logging.FileHandler(log_path,mode='a',encoding='utf-8')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         self.err_logger=logger

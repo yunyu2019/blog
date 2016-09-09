@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for zhizhu project
+# Scrapy settings for taobaomm project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,16 +9,16 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'zhizhu'
+BOT_NAME = 'taobaomm'
 
-SPIDER_MODULES = ['zhizhu.spiders']
-NEWSPIDER_MODULE = 'zhizhu.spiders'
-IMAGES_STORE='/home/www/zhizhu/images'
-DOWNLOAD_DELAY=1
+SPIDER_MODULES = ['taobaomm.spiders']
+NEWSPIDER_MODULE = 'taobaomm.spiders'
+IMAGES_STORE='/home/www/taobaomm/images'
+DOWNLOAD_DELAY=0
 
 LOG_STDOUT = False
 LOG_LEVEL = 'DEBUG'
-LOG_FILE = '/home/www/zhizhu/zhizhu.log'
+LOG_FILE = '/home/www/taobaomm/taobaomm.log'
 
 MYSQL_DB={
     'host':'127.0.0.1',
@@ -28,16 +28,16 @@ MYSQL_DB={
     'charset':'utf8'
 }
 ITEM_PIPELINES = {
-    'zhizhu.pipelines.ZhizhuPipeline': 300,
-    'zhizhu.pipelines.MysqlsavePipeline': 350,
-    'zhizhu.pipelines.MyImagesPipeline': 1
+    'taobaomm.pipelines.TaoBaoPipeline': 300,
+    'taobaomm.pipelines.MysqlsavePipeline': 350,
+    'taobaomm.pipelines.MyImagesPipeline': 1
 }
 
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddleware.useragent.UserAgentMiddleware' : None,
     'scrapy.downloadermiddleware.retry.RetryMiddleware' : None,
-    'zhizhu.middlewares.RandomUserAgentMiddleware' :400,
-    'zhizhu.middlewares.MyRetryMiddleware' :500
+    'taobaomm.middlewares.RandomUserAgentMiddleware' :400,
+    'taobaomm.middlewares.MyRetryMiddleware' :500
 }
 
 USER_AGENTS=[
@@ -63,7 +63,7 @@ USER_AGENTS=[
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'zhizhu (+http://www.yourdomain.com)'
+#USER_AGENT = 'taobaomm (+http://www.yourdomain.com)'
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS=32
@@ -91,13 +91,13 @@ USER_AGENTS=[
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'zhizhu.middlewares.MyCustomSpiderMiddleware': 543,
+#    'taobaomm.middlewares.MyCustomSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    'zhizhu.middlewares.MyCustomDownloaderMiddleware': 543,
+#    'taobaomm.middlewares.MyCustomDownloaderMiddleware': 543,
 #}
 
 # Enable or disable extensions
@@ -109,7 +109,7 @@ USER_AGENTS=[
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 #ITEM_PIPELINES = {
-#    'zhizhu.pipelines.SomePipeline': 300,
+#    'taobaomm.pipelines.SomePipeline': 300,
 #}
 
 # Enable and configure the AutoThrottle extension (disabled by default)

@@ -8,17 +8,18 @@ import os
 import json
 import codecs
 import logging
-from zhizhu import settings
+from taobaomm import settings
 import mysql.connector
 
-logger=logging.getLogger('zhizhu')
+logger=logging.getLogger('taobaomm')
 formatter=logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(message)s')
 logger.setLevel(logging.ERROR)
-handler=logging.FileHandler('/home/www/zhizhu/error.log',mode='a',encoding='utf-8')
+log_path=os.path.dirname(settings.LOG_FILE)+'/mysql_error.log'
+handler=logging.FileHandler(log_path,mode='a',encoding='utf-8')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-class ZhizhuPipeline(object):
+class TaoBaoPipeline(object):
     def __init__(self):
         self.file = codecs.open('data.json', 'w', encoding='utf-8')
     def process_item(self, item, spider):

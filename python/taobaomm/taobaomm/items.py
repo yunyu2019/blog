@@ -8,7 +8,7 @@
 import scrapy
 
 
-class ZhizhuItem(scrapy.Item):
+class MMItem(scrapy.Item):
     name=scrapy.Field()
     age=scrapy.Field()
     profile_url=scrapy.Field() 
