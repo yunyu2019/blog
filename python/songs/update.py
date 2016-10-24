@@ -134,6 +134,30 @@ def updateContRelationById(data,view_url,ids):
 			else:
 				continue
 
+def updateAuthor(data,author_url,author_id):
+	with open(data) as fp:
+		flag=True
+		for line in fp:
+			item=json.loads(line)
+			cursor1=conn.cursor()
+			if item['author_url']==author_url:
+				if flag:
+					relation_urls=','.join(item['relation_urls']) if item['relation_urls'] else ''
+					sql='update author set author_url=%s,faceimg=%s,descp=%s,relation_urls=%s where id=%s'
+					try:
+						cursor1.execute(sql,[item['author_url'],item['faceimg'],item['author_desc'],relation_urls,author_id])
+					except mysql.connector.Error as e:
+						msg='url:{url} message:{msg}'.format(url=author_url,msg=str(e))
+						logger.error(msg)
+					flag=False
+				if item['relation_urls'] and 'view_url' in item:
+					created=int(time.time())
+					sql1='insert into author_relation (`author_id`,`title`,`description`,`created`,`editor`,`view_url`) values (%s,%s,%s,%s,%s,%s)'
+					try:
+						cursor1.execute(sql1,[author_id,item['title'],item['content'],created,item['editor'],item['view_url']])
+					except  mysql.connector.Error as e:
+						msg= 'url:{url} message:{msg}'.format(url=item['view_url'],msg=str(e))
+						logger.error(msg)
 
 if __name__ == '__main__':
 	#updateDynasty()
