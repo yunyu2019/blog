@@ -10,6 +10,7 @@ import time
 import json
 import codecs
 import scrapy
+import urlparse
 import requests
 from urllib import urlencode
 from scrapy.selector import Selector
@@ -36,6 +37,7 @@ class Follow(CrawlSpider):
 		self.cookie_file='{0}/{1}'.format(source_root,DATAS['cookies'])
 		self.captcha_file='{0}/{1}'.format(source_root,'captcha.gif')
 		self.captcha=False
+		self.xsrf=None
 
 	def start_requests(self):
 		return [Request('https://www.zhihu.com/#signin',meta = {'cookiejar' : 1}, callback = self.post_login)]
@@ -44,6 +46,7 @@ class Follow(CrawlSpider):
 		print 'Preparing login'
 		hxs=Selector(response)
 		xsrf=hxs.xpath('//input[@name="_xsrf"]/@value')[0].extract()
+		self.xsrf=xsrf
 		formdata={'_xsrf': xsrf,'email':ZHIHU['email'],'password': ZHIHU['password'],'remember_me':'true'}
 		if self.captcha:
 			signform=hxs.xpath('//div[@class="view view-signin"]')
@@ -81,6 +84,13 @@ class Follow(CrawlSpider):
 				print res['msg']
 		else:
 			print res['msg']
+			cookie=response.headers.getlist('Set-Cookie')
+			cookies=dict()
+			map(lambda x:cookies.setdefault(x.split('=',1)[0],x.split('=',1)[1]),cookie)
+			cookies['_xsrf']=self.xsrf
+			with codecs.open(self.cookie_file,'a',encoding='utf-8') as fp:
+				line=json.dumps(dict(cookies),ensure_ascii=True)
+				fp.write(line)
 			for url in self.start_urls :
 				yield self.make_requests_from_url(url)
 
@@ -88,14 +98,9 @@ class Follow(CrawlSpider):
 		pass
 
 	def parse_followee(self,response):
-		print 'spider follows begin'
 		user_url=response.url
-		cookie = response.request.headers.getlist('Cookie')[0].split(';')
-		cookies=dict()
-		map(lambda x:cookies.setdefault(x.split('=',1)[0],x.split('=',1)[1]),cookie)
-		with codecs.open(self.cookie_file,'a',encoding='utf-8') as fp:
-			line=json.dumps(dict(cookies),ensure_ascii=True)
-			fp.write(line)
+		parse_urls=urlparse.urlparse(user_url)
+		print 'spider follows begin:{0}'.format(parse_urls.path)
 		hxs=Selector(response)
 		section=hxs.xpath('//span[@class="zm-profile-section-name"]/text()').re('(\d+)')
 		nums=int(section[0])
@@ -124,9 +129,11 @@ class Follow(CrawlSpider):
 				item['data']=points
 				line=json.dumps(dict(item),ensure_ascii=True)
 				fp.write('{0}\n'.format(line))
-		
+
+		print 'collection his|her profile success,the count of followees is: {0}'.format(nums)
 		pages=int(nums//20+1)
-		url='https://www.zhihu.com/node/{0}'.format(nodename)
+		url='https://{0}/node/{1}'.format(self.allowed_domains[0],nodename)
+		ajax_parses=urlparse.urlparse(url)
 		self.headers['Referer']=user_url
 		self.headers['X-Requested-With']='XMLHttpRequest'
 		self.headers['X-Xsrftoken']=token
@@ -135,34 +142,38 @@ class Follow(CrawlSpider):
 		for i in range(1,pages):
 			offset=i*20
 			params={"offset":offset,"order_by":"created","hash_id":hash_id}
-			print params
 			datas={
 				'method':'next',
 				'params':json.dumps(params)
 			}
-			yield Request(url,method="POST",headers=self.headers,body=urlencode(datas),callback=self.parse_followees)
+			print 'start ajax spider {0},offset: {1}'.format(ajax_parses.path,offset)
+			yield Request(url,method="POST",headers=self.headers,body=urlencode(datas),callback=self.parse_followees,meta={'offset':offset})
 
 
 	def parse_followees(self,response):
-		print 'ajax-followees'
+		offset=response.meta['offset']
 		cont=json.loads(response.body_as_unicode())
-		with codecs.open(self.data_file,'a',encoding='utf-8') as fp:
-			for i in cont['msg']:
-				item=FollowItem()
-				hxs=Selector(text=i)
-				a=hxs.xpath('//a[@class="zm-item-link-avatar"]')
-				view_url=a.xpath('./@href').extract()[0]
-				name=a.xpath('./@title').extract()[0]
-				avatar=a.xpath('./img[@class="zm-item-img-avatar"]/@src').extract()[0]
-				descp=hxs.xpath('//span[@class="bio"]/text()').extract()
-				points=hxs.xpath('//a[@class="zg-link-gray-normal"]/text()').re('(\d+)')
-				item['view_url']=view_url
-				item['name']=name
-				item['avatar']=avatar
-				item['descp']=descp[0] if descp else ''
-				item['data']=points
-				line=json.dumps(dict(item),ensure_ascii=True)
-				fp.write('{0}\n'.format(line))
+		if cont['msg']:
+			print 'ajax-followees success,offset:{0}'.format(offset)
+			with codecs.open(self.data_file,'a',encoding='utf-8') as fp:
+				for i in cont['msg']:
+					item=FollowItem()
+					hxs=Selector(text=i)
+					a=hxs.xpath('//a[@class="zm-item-link-avatar"]')
+					view_url=a.xpath('./@href').extract()[0]
+					name=a.xpath('./@title').extract()[0]
+					avatar=a.xpath('./img[@class="zm-item-img-avatar"]/@src').extract()[0]
+					descp=hxs.xpath('//span[@class="bio"]/text()').extract()
+					points=hxs.xpath('//a[@class="zg-link-gray-normal"]/text()').re('(\d+)')
+					item['view_url']=view_url
+					item['name']=name
+					item['avatar']=avatar
+					item['descp']=descp[0] if descp else ''
+					item['data']=points
+					line=json.dumps(dict(item),ensure_ascii=True)
+					fp.write('{0}\n'.format(line))
+		else:
+			print 'ajax-followees faild,offset:{0}'.format(offset)
 
 		
 

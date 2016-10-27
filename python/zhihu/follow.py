@@ -88,9 +88,12 @@ class Follows(object):
 
 	def getAjax(self,cookies,hash_id,token,offset):
 		headers=copy.copy(self.headers)
-		cookies=['{0}={1}'.format(item.name,item.value) for item in cookies]
-		cookies.append('_xsrf={0}'.format(token))
-		headers['Cookie']=';'.join(cookies)
+		if isinstance(cookies,str):
+			headers['Cookie']=cookies
+		else:
+			cookies=['{0}={1}'.format(item.name,item.value) for item in cookies]
+			cookies.append('_xsrf={0}'.format(token))
+			headers['Cookie']=';'.join(cookies)
 		params={"offset":offset,"order_by":"created","hash_id":hash_id}
 		datas={
 			'method':'next',
@@ -103,25 +106,26 @@ class Follows(object):
 		req=requests.post('https://www.zhihu.com/node/ProfileFolloweesListV2',data=datas,headers=headers)
 		cont=req.content
 		items=json.loads(cont)
-		with codecs.open('follows.txt','a',encoding='utf-8') as fp:
-			for i in items['msg']:
-				item=dict()
-				data=list()
-				hxs=etree.HTML(i)
-				a=hxs.xpath('//a[@class="zm-item-link-avatar"]')[0]
-				item['view_url']=a.xpath('@href')[0]
-				item['name']=a.xpath('@title')[0]
-				item['avatar']=a.xpath('//img[@class="zm-item-img-avatar"]/@src')[0]
-				descp=hxs.xpath('//span[@class="bio"]/text()')
-				item['descp']=descp[0] if descp else ''
-				points=hxs.xpath('//a[@class="zg-link-gray-normal"]/text()')
-				for x in points:
-					m=re.search('(\d+)',x)
-					point=m.group(1) if m.groups() else 0
-					data.append(point)
-				item['data']=data
-				line=json.dumps(item,ensure_ascii=True)
-				fp.write('{0}\n'.format(line))
+		if items['msg']:
+			with codecs.open('follows.txt','a',encoding='utf-8') as fp:
+				for i in items['msg']:
+					item=dict()
+					data=list()
+					hxs=etree.HTML(i)
+					a=hxs.xpath('//a[@class="zm-item-link-avatar"]')[0]
+					item['view_url']=a.xpath('@href')[0]
+					item['name']=a.xpath('@title')[0]
+					item['avatar']=a.xpath('//img[@class="zm-item-img-avatar"]/@src')[0]
+					descp=hxs.xpath('//span[@class="bio"]/text()')
+					item['descp']=descp[0] if descp else ''
+					points=hxs.xpath('//a[@class="zg-link-gray-normal"]/text()')
+					for x in points:
+						m=re.search('(\d+)',x)
+						point=m.group(1) if m.groups() else 0
+						data.append(point)
+					item['data']=data
+					line=json.dumps(item,ensure_ascii=True)
+					fp.write('{0}\n'.format(line))
 
 	def run(self):
 		xsrf=self.getXsrf()
@@ -143,9 +147,8 @@ class Follows(object):
 			fp.write(line)
 		
 if __name__ == '__main__':
-	s='q_c1=079cd80429614ea1a9f211a6d0f24830|1477288506000|1477288506000; _xsrf=10a129a1972fbb0dbcafbda0fd1a62d7; l_cap_id="NDVkYTNiYTEyYTYxNDdiNDg0Zjk0NWQ2OGU5M2M4ZjU=|1477288506|397ece1c6e22a788059a1d41cdf38a0e5b977cd5"; cap_id="Y2FlYmExY2I3MjQzNDQwMzg3NmRiMjQ2ZTA1OTkzNTk=|1477288506|2269acb5fc34d46672cea630abd6a103fe6cc351"; d_c0="ABDA2BhkvQqPTuq5V3TadpBg1kPZPDp4U2Q=|1477288506"; _zap=92f05cdb-9abe-44a8-a924-5574146ace90; __utmt=1; login="MGIxNjBmYzYzN2ZlNGZjNzg1ZDJkYWQ3MzM3ZDk3YWU=|1477288518|0553ae6426d401468ccbf0fb33b5f36342055b89"; n_c=1; __utma=51854390.859254675.1477288835.1477288835.1477288835.1; __utmb=51854390.8.8.1477288853776; __utmc=51854390; __utmz=51854390.1477288835.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); __utmv=51854390.100-1|2=registration_date=20150731=1^3=entry_date=20150731=1; a_t="2.0ABDKbo3deAgXAAAAhC81WAAQym6N3XgIABDA2BhkvQoXAAAAYQJVTUYvNVgA9EjcHj0g4dAcHEmF9EexFDM0QLDmqVZV9ZstiQ6S907Gle0ACksjtQ=="; z_c0=Mi4wQUJES2JvM2RlQWdBRU1EWUdHUzlDaGNBQUFCaEFsVk5SaTgxV0FEMFNOd2VQU0RoMEJ3Y1NZWDBSN0VVTXpSQXNB|1477288580|30f730ff444b82a7cbda423cc66f5ef41afb7bc7'
 	follow=Follows()
-	follow.WriteCookie(s)
+	follow.run()
 
 
 
