@@ -141,7 +141,12 @@ class HuabanSpider(object):
 						types=item['file']['type'].split('/',1)
 						img_type=types[1] if len(types)>1 else types[0]
 						img_type=img_type.lower()
-					cursor.execute(sql,[item['user_id'],item['like'],item['img'],item['created'],item['via'],item['pin_id'],item['repin_count'],item['original'],item['raw'],item['comment_count'],meta,item['link'],item['file_id'],item['via_user_id'],item['source'],img_type])
+					params=(item['user_id'],item['like'],item['img'],item['created'],item['via'],item['pin_id'],item['repin_count'],item['original'],item['raw'],item['comment_count'],meta,item['link'],item['file_id'],item['via_user_id'],item['source'],img_type)
+					cursor.execute(sql,params)
+					"""
+					#When you use a transactional storage engine such as InnoDB (the default in MySQL 5.5 and higher), you must commit the data after a sequence of INSERT, DELETE, and UPDATE statements.
+					db.commit()
+					"""
 				except mysql.connector.Error as e:
 					msg=u'via:{via} 写入数据表{table}失败:{reasion}'.format(via=item['via'],table='photogirls',reasion=e)
 					self.logger.error(msg)
