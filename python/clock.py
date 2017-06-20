@@ -49,8 +49,9 @@ class ntpdateOs(object):
         self.logger.info('begin ping server')
         rule=re.compile('(\d+)% packet loss, time (\d+)ms',re.S)
         rule1=re.compile('(\d+[\d\.]+\d+).* bytes of data',re.S)
+        msg='get 0 ips.'
         for url in self.servers:
-           cmd='ping -c {0} -w {1} {2}'.format(5,3,url)
+           cmd='ping -c {0} -W {1} -q {2}'.format(5,3,url)
            out,err=self.shellCmd(cmd)
            if out:
                m=re.findall(rule,str(out))
@@ -66,7 +67,11 @@ class ntpdateOs(object):
                self.logger.info('ping {0} error,{1}'.format(url,err.decode('utf-8')))
                continue
 
-        self.logger.info('ping over,get {0} ip,they are {1}'.format(len(self.ips),','.join(self.ips)))
+        nums=len(self.ips)
+        if nums:
+           msg='get {0} ips,ther are {1}.'.format(nums,self.ips)
+
+        self.logger.info('ping over,{0}'.format(msg))
 
     def ntpdates(self):
         for ip in self.ips:
