@@ -1,78 +1,54 @@
 #encoding=utf-8
 import os
-import include
+import sys
+import codecs
 from include import *
 
-TABLESPACE_NAME='D:\\mysql_data\\test\\t.ibd'
-VARIABLE_FIELD_COUNT = 1
-NULL_FIELD_COUNT = 0
+version3_flag=False
+if sys.version>'3':
+   version3_flag=True
 
-class myargv(object):
-   def __init__(self, argv):
-      self.argv = argv
-      self.parms = {}
-      self.tablespace = ''
-        
-   def parse_cmdline(self):
-      argv = self.argv
-      if len(argv) == 1:
-         print 'Usage: python py_innodb_page_info.py [OPTIONS] tablespace_file'
-         print 'For more options, use python py_innodb_page_info.py -h'
-         return 0 
-
-      while argv:
-         if argv[0][0] == '-':
-            if argv[0][1] == 'h':
-               self.parms[argv[0]] = ''
-               argv = argv[1:]
-               break
-            if argv[0][1] == 'v':
-               self.parms[argv[0]] = ''
-               argv = argv[1:]                 
-            else:
-               self.parms[argv[0]] = argv[1]
-               argv = argv[2:]
-         else:
-               self.tablespace = argv[0]
-               argv = argv[1:]
-
-      if self.parms.has_key('-h'):
-         print 'Get InnoDB Page Info'
-         print 'Usage: python py_innodb_page_info.py [OPTIONS] tablespace_file\n'
-         print 'The following options may be given as the first argument:'
-         print '-h        help '
-         print '-o output put the result to file'
-         print '-t number thread to anayle the tablespace file'
-         print '-v        verbose mode'
-         return 0
-
-      return 1
                 
 def mach_read_from_n(page,start_offset,length):
     ret = page[start_offset:start_offset+length]
-    return ret.encode('hex')
+    res=None
+    if version3_flag:
+        res=codecs.encode(ret,encoding='hex')
+    else:
+        res=codecs.encode(ret,'hex')
+
+    return res
         
-def get_innodb_page_type(myargv):
-    f=file(myargv.tablespace,'rb')
+def get_innodb_page_type(**kw):
+    f=open(kw["tablespace"],'rb')
     fsize = os.path.getsize(f.name)/INNODB_PAGE_SIZE
+    fsize=int(fsize)
     ret = {}
-    for i in range(fsize):
-        page = f.read(INNODB_PAGE_SIZE)
-        page_offset = mach_read_from_n(page,FIL_PAGE_OFFSET,4)
-        page_type = mach_read_from_n(page,FIL_PAGE_TYPE,2)
-        if myargv.parms.has_key('-v'):
-           if page_type == '45bf':
-              page_level = mach_read_from_n(page,FIL_PAGE_DATA+PAGE_LEVEL,2)
-              print "page offset %s, page type <%s>, page level <%s>"%(page_offset,innodb_page_type[page_type],page_level)
-           else:
-              print "page offset %s, page type <%s>"%(page_offset,innodb_page_type[page_type])
+    with open(kw['output'],'w+') as fp:
+        fp.write("Total number of page: {0}\n".format(fsize))
+        fp.write("{0}\n".format('--'*30))
+        for i in range(fsize):
+            page = f.read(INNODB_PAGE_SIZE)
+            page_offset = mach_read_from_n(page,FIL_PAGE_OFFSET,4)
+            page_type = mach_read_from_n(page,FIL_PAGE_TYPE,2)
+            if version3_flag:
+               page_type=page_type.decode('utf-8')
 
-        if not ret.has_key(page_type):
-           ret[page_type] = 1
-        else:
-           ret[page_type] = ret[page_type] + 1
+            if kw["v"]:
+               msg="page offset {0}, page type {1}".format(page_offset,innodb_page_type[page_type])
+               if page_type == '45bf':
+                  page_level = mach_read_from_n(page,FIL_PAGE_DATA+PAGE_LEVEL,2)
+                  msg="{0}, page level {1}".format(msg,page_level)
 
-    print "Total number of page: %d:"%fsize
+               fp.write('{0}\n'.format(msg))
 
-    for type in ret:
-        print "%s: %s"%(innodb_page_type[type],ret[type])
+            if page_type not in  ret:
+               ret[page_type] = 1
+            else:
+               ret[page_type] = ret[page_type] + 1
+
+        fp.write("{0}\n".format('--'*30))
+        for type in ret:
+            fp.write("{0}: {1}\n".format(innodb_page_type[type],ret[type]))
+
+    f.close()
