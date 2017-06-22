@@ -15,6 +15,7 @@ import time
 import argparse
 import numpy as np
 from PIL import Image
+import cProfile,pstats
 
 def isImage(filename):
     allows=('.jpg','.jpeg','.png')
@@ -26,8 +27,7 @@ def isImage(filename):
 def conver2gray(sta,end,depths=10):
     a = np.asarray(Image.open(sta).convert('L')).astype('float')
     depth = depths
-    grad = np.gradient(a)  # 取图像灰度的梯度值
-    grad_x, grad_y = grad  # 分别取横纵图像梯度值
+    grad_x, grad_y = np.gradient(a)  # 取图像灰度的梯度值
     grad_x = grad_x * depth / 100.
     grad_y = grad_y * depth / 100.
     A = np.sqrt(grad_x ** 2 + grad_y ** 2 + 1.)
@@ -60,5 +60,14 @@ def main():
     print('程序运行了{0}s'.format(exect_time))
 
 if __name__ == '__main__':
+    """
+    pr = cProfile.Profile()
+    pr.enable()
+    main()
+    pr.disable()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=open('d:/result.txt','a')).strip_dirs().sort_stats(sortby)
+    ps.print_stats()
+    """
     main()
     
