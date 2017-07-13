@@ -6,7 +6,7 @@
 # @descp   : 将图片转换成灰度图片
 """
 #run in python3 env
-pip3 install pillow
+pip3 install Pillow
 pip3 install numpy
 """
 

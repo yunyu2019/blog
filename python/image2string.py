@@ -4,6 +4,7 @@
 # @Author  : Yunyu2019 (yunyu2010@yeah.net)
 # @Link    : ${link}
 # @descp   : The document description
+# use Pillow
 
 import os
 import argparse
