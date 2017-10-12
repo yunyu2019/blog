@@ -47,7 +47,6 @@ class Mk2Html(object):
         return flag
 
     def getMds(self):
-        s=[]
         for i in os.walk(self.source):
             dir=i[0].replace('\\','/')
             flag=self.filterDir(dir)
@@ -58,14 +57,12 @@ class Mk2Html(object):
                 for x in i[2]:
                     if self.filters:
                         if x.split('.')[-1] in self.filters:
-                            s.append((dir,x))
+                            yield (dir,x)
                     else:
-                        s.append((dir,x))
+                        yield (dir,x)
 
             else:
-                s.append((dir,i[2]))
-
-        return s
+                yield (dir,i[2])
 
     def writeHtml(self,file):
         sf='/'.join(file)
@@ -89,20 +86,16 @@ class Mk2Html(object):
         if not os.path.isdir(self.source):
             print('{0} is not real directory'.format(source))
             sys.exit()
-    
-        m=self.getMds()
-        num=len(m)
-        if num<1:
-            print('no markdown file to transfer')
-            sys.exit()
 
-        print('find {0} markdown files'.format(num))
         if not os.path.isdir(self.output):
             os.makedirs(self.output)
 
-        for i in m:
-           self.writeHtml(i)
+        num=0
+        for x in self.getMds():
+            self.writeHtml(x)
+            num+=1
 
+        print('find {0} markdown files'.format(num))
         print('transfer over')
 
 if __name__ == '__main__':
