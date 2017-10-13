@@ -79,7 +79,7 @@ class ntpdateOs(object):
             self.logger.info(cmd)
             out,err=self.shellCmd(cmd)
             if out:
-                self.logger.info('success,{0}'.format(str(out)))
+                self.logger.info('success,{0}'.format(out.decode('utf-8').strip()))
                 break
             else:
                 msg='{0} error {1}'.format(ip,err.decode('utf-8'))
