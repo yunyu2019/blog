@@ -21,8 +21,7 @@ class Mk2Html(object):
         self.output=kw.get('output','')
 
     def md2html(self,mdstr):
-        html ='''
-        <html lang="zh-cn">
+        html ='''<html lang="zh-cn">
         <head>
         <meta content="text/html; charset=utf-8" http-equiv="content-type" />
         <link href="/static/default.css" rel="stylesheet">
@@ -31,15 +30,14 @@ class Mk2Html(object):
         <body>
         %s
         </body>
-        </html>
-        '''
+        </html>'''
         ret = markdown.markdown(mdstr,extensions=self.exts)
         return html % ret
 
     def filterDir(self,dir):
         flag=False
         for x in self.exclude:
-            sub='/{0}'.format(x)
+            sub='{0}{1}'.format(os.sep,x)
             if dir.find(sub)>0:
                 flag=True
                 break
@@ -47,36 +45,33 @@ class Mk2Html(object):
         return flag
 
     def getMds(self):
-        for i in os.walk(self.source):
-            dir=i[0].replace('\\','/')
-            flag=self.filterDir(dir)
+        for dirs,paths,files in os.walk(self.source):
+            flag=self.filterDir(dirs)
             if flag:
                 continue
 
-            if type(i[2]==list):
-                for x in i[2]:
+            if isinstance(files,list):
+                for x in files:
                     if self.filters:
-                        if x.split('.')[-1] in self.filters:
-                            yield (dir,x)
+                        if x.endswith(tuple(self.filters)):
+                            yield (dirs,x)
                     else:
-                        yield (dir,x)
+                        yield (dirs,x)
 
             else:
-                yield (dir,i[2])
+                yield (dirs,files)
 
     def writeHtml(self,file):
-        sf='/'.join(file)
-        with open(sf,'r',encoding="utf-8") as fp:
-            cont=fp.read()
-
-        cont=re.sub('\((.*)\.md\)','(\\1.html)',cont)
         dest_dir=file[0].replace(self.source,self.output)
         if not os.path.isdir(dest_dir):
             os.makedirs(dest_dir)
 
         dest_f=file[1].replace('.md','.html')
         dest_file=os.path.join(dest_dir,dest_f)
-        with open(dest_file,'w+',encoding='utf-8') as f:
+        sf=os.sep.join(file)
+        with open(sf,'r',encoding="utf-8") as fp,open(dest_file,'w+',encoding='utf-8') as f:
+            cont=fp.read()
+            cont=re.sub('\((.*)\.md\)','(\\1.html)',cont)
             html=self.md2html(cont)
             f.write(html)
 
