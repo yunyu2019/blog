@@ -12,8 +12,7 @@ import subprocess
 class ntpdateOs(object):
     """ntpdate the os system time"""
     servers=list()
-    logger=False
-    ips=list()
+    logger=None
 
     def __init__(self):
         self.initServers()
@@ -39,62 +38,53 @@ class ntpdateOs(object):
         p=subprocess.Popen(cmd,stdout = subprocess.PIPE,stderr = subprocess.PIPE,shell = True)
         try:
            out,err=p.communicate(timeout=timeout)  #python3.3开始支持timeout参数
-           return out,err
+           out=out.decode('utf-8')
+           err=err.decode('utf-8')
         except TimeoutExpired:
            p.kill()
-           out,err=p.communicate()
-           return False,err
+           _,err=p.communicate()
+           out=False
+           err=err.decode('utf-8')
+        finally:
+           return out,err
 
     def pings(self):
-        self.logger.info('begin ping server')
         rule=re.compile('(\d+)% packet loss, time (\d+)ms',re.S)
         rule1=re.compile('(\d+[\d\.]+\d+).* bytes of data',re.S)
-        msg='get 0 ips.'
         for url in self.servers:
            cmd='ping -c {0} -W {1} -q {2}'.format(5,3,url)
            out,err=self.shellCmd(cmd)
-           if out:
-               m=re.findall(rule,str(out))
-               if len(m)>0 and m[0][0]=='0':
-                  m1=re.findall(rule1,str(out))
-                  if len(m1)>0:
-                     self.ips.append(m1[0])
-                  else:
-                     continue
-               else:
-                  continue
-           else:
-               self.logger.info('ping {0} error,{1}'.format(url,err.decode('utf-8')))
+           if not out:
+               self.logger.info('ping {0} error,{1}'.format(url,err))
                continue
 
-        nums=len(self.ips)
-        if nums:
-           msg='get {0} ips,ther are {1}.'.format(nums,self.ips)
+           m=re.findall(rule,str(out))
+           if len(m)>0 and m[0][0]=='0':
+              m1=re.findall(rule1,str(out))
+              if len(m1)>0:
+                 self.logger.info('get {} from {}'.format(m1[0],url))
+                 yield m1[0]
 
-        self.logger.info('ping over,{0}'.format(msg))
+    def ntpdates(self,ip):
+        cmd='/usr/sbin/ntpdate {0}'.format(ip) #默认执行的是/bin/sh下的命令，但ntpdate命令不在该目录下
+        self.logger.info(cmd)
+        out,err=self.shellCmd(cmd)
+        if out:
+            self.logger.info(out.strip())
+            return True
 
-    def ntpdates(self):
-        for ip in self.ips:
-            cmd='/usr/sbin/ntpdate {0}'.format(ip) #默认执行的是/bin/sh下的命令，但ntpdate命令不在该目录下
-            self.logger.info(cmd)
-            out,err=self.shellCmd(cmd)
-            if out:
-                self.logger.info('success,{0}'.format(out.decode('utf-8').strip()))
-                break
-            else:
-                msg='{0} error {1}'.format(ip,err.decode('utf-8'))
-                self.logger.info(msg)
-                continue
-
-        self.logger.info('ntpdate time over')
+        msg='{0} error {1}'.format(ip,err)
+        self.logger.info(msg)
+        return False
 
     def run(self):
-        self.pings()
-        if len(self.ips)<1:
-           self.logger.info('can\'t update the system time')
-           exit()
+        self.logger.info('begin ping server')
+        for ip in self.pings():
+            flag=self.ntpdates(ip)
+            if flag:
+               break
 
-        self.ntpdates()
+        self.logger.info('ntpdate time over')
 
 ntp=ntpdateOs()
 ntp.run()
