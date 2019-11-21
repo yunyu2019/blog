@@ -1,0 +1,34 @@
+### golang学习代码
+* [iota的理解](const.go)
+* [defer与匿名函数](func.go)
+* [defer的恢复(panic)](func_1.go)
+* [defer的局部变量控制](func_2.go)
+* [defer的匿名函数局部变量控制](func_3.go)
+* [struct与切片](struct.go)
+* [mysql数据库查询](mysql.go)
+* [协程与互斥锁](lock.go)
+* [协程与读写锁](mutex.go)
+* [base64编码及解码](base.go)
+* [缓存chan实现斐波那契数列](chan.go)
+* [select+chan实现斐波那契数列](fb.go)
+* [多协程利用cpu多核特性并发输出数字](chan_1.go)
+* [利用cpu多核特性并发输出数字](chan_2.go)
+* [利用cpu多核特性sync并发输出数字](chan_3.go)
+* [条件变量控制互斥锁(协程共享数据)](cond.go)
+* [周期性定时](time.go)
+* 网络通信
+    1. tcp协议
+        * [tcp服务器socket](socket_server.go)
+        * [tcp客户端socket](socket_client.go)
+        * [tcp并发版服务器socket](socket_server_go.go)
+        * [tcp并发版客户端socket](socket_client_go.go)
+        * [聊天室服务器socket](talk_server.go)
+        * [聊天室客户端socket](talk_client.go)
+        * [文件服务服务端](file_server.go)
+        * [文件服务客户端](file_send.go)
+    2. udp协议
+        * [udp服务器socket](udp_server.go)
+        * [udp客户端socket](udp_client.go)
+* 算法
+    * [冒泡排序算法](maopao.go)
+
