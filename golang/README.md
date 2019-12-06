@@ -42,4 +42,8 @@
     * [普通双向链表](double_link.go)
     * [单向环形链表](circel_double_link.go)
     * [约瑟夫问题-单向环形链表](yuesefu.go)
+    * [使用数组模拟栈](stack.go)
+    * [使用栈模拟计算表达式运算过程](calculate_stack.go)
+    * [迷宫问题](迷宫.go)
+    * [hash表实现](hash.go)
 
