@@ -8,6 +8,7 @@
 * [mysql数据库查询](mysql.go)
 * [协程与互斥锁](lock.go)
 * [协程与读写锁](mutex.go)
+* [多协程查找素数](su.go)
 * [base64编码及解码](base.go)
 * [缓存chan实现斐波那契数列](chan.go)
 * [select+chan实现斐波那契数列](fb.go)
@@ -16,6 +17,8 @@
 * [利用cpu多核特性sync并发输出数字](chan_3.go)
 * [条件变量控制互斥锁(协程共享数据)](cond.go)
 * [周期性定时](time.go)
+* [拷贝文件](copy_file.go)
+* [断点续传文件实验](upload_file.go)
 * 网络通信
     1. tcp协议
         * [tcp服务器socket](socket_server.go)
