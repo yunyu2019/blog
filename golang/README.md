@@ -49,4 +49,18 @@
     * [使用栈模拟计算表达式运算过程](calculate_stack.go)
     * [迷宫问题](迷宫.go)
     * [hash表实现](hash.go)
+* go使用细节
+    * [类型断言指针调用方法](detail_1.go)
+    * [指针实现接口方法调用](detail_2.go)
+    * [defer匿名函数调用](detail_3.go)
+    * [指针切片遍历细节](detail_4.go)
+    * [defer匿名函数循环调用](detail_5.go)
+    * [结构体指针方法指向细节](detail_6.go)
+    * [defer调用函数与匿名函数](detail_7.go)
+    * [接口类型作为函数参数与返回值](detail_8.go)
+    * [命名返回值与普通声明返回值](detail_9.go)
+    * [闭包函数使用细节](detail_10.go)
+    * [panic调用细节](detail_11.go)
+    * [map中使用结构体的注意事项](detail_12.go)
+    * [defer的另类妙用](defer.go)
 
