@@ -81,6 +81,33 @@ func list(head *Node) (nodes []Node) {
 	return
 }
 
+/*
+* getMiddle 获取单链表中间节点
+* 思路:
+* 初始化:定义两个指针分别指向单链表头节点,比如search指针和mid指针
+* 运行中:search每次移动两次指针，mid每次移动一次指针，
+* 结束条件:当search移动到最后节点后，mid的位置就是中间节点的位置
+ */
+func getMiddle(head *Node) *Node {
+	if head.next == nil {
+		return &Node{}
+	}
+	search := head
+	mid := head
+	for {
+		if search.next == nil {
+			break
+		}
+		if search.next.next != nil {
+			search = search.next.next
+		} else {
+			search = search.next
+		}
+		mid = mid.next
+	}
+	return mid
+}
+
 func main() {
 	head := &Node{}
 	head1 := Node{data: 1}
@@ -92,6 +119,7 @@ func main() {
 	for _, v := range nodes {
 		fmt.Println(v.data)
 	}
+
 	fmt.Println("插入元素后----------")
 	head3 := Node{data: 3}
 	insertList(head, &head3)
@@ -102,10 +130,15 @@ func main() {
 	for _, v := range nodes {
 		fmt.Println(v.data)
 	}
+
 	fmt.Println("删除元素后----------")
 	deleteList(head, 3)
 	nodes = list(head)
 	for _, v := range nodes {
 		fmt.Println(v.data)
 	}
+
+	fmt.Println("查找中间节点----------")
+	mid := getMiddle(head)
+	fmt.Printf("中间节点是:%d\n", mid.data)
 }
