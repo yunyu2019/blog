@@ -1,12 +1,9 @@
 /*
- * @Author: your name
- * @Date: 2019-12-09 15:25:42
- * @LastEditTime: 2019-12-12 15:11:24
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: \src\copy_file.go
+ * Author: yunyu2019
+ * Date: 2019-12-12 17:06:19
+ * Description:
  */
-// copy_file.go
+
 package main
 
 import (

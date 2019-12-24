@@ -43,7 +43,7 @@
     * [环形队列](cirecl_queue.go)
     * [普通单向链表](single_link.go)
     * [普通双向链表](double_link.go)
-    * [单向环形链表](circel_double_link.go)
+    * [单向环形链表](circel_link.go)
     * [单向链表的环检测](check_circel.go)
     * [约瑟夫问题-单向环形链表](yuesefu.go)
     * [魔术师发牌问题-单向环形链表](licensing.go)
