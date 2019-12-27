@@ -16,6 +16,8 @@
 * [利用cpu多核特性并发输出数字](chan_2.go)
 * [利用cpu多核特性sync并发输出数字](chan_3.go)
 * [条件变量控制互斥锁(协程共享数据)](cond.go)
+* [反射的基本使用](reflect.go)
+* [利用反射创建结构体并初始化](reflect_1.go)
 * [周期性定时](time.go)
 * [拷贝文件](copy_file.go)
 * [断点续传文件实验](upload_file.go)
