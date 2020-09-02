@@ -270,34 +270,4 @@ func main() {
 			}(statArr, workPool)
 		}
 	}
-	/*
-		data := make([]string, 19999)
-		for i := range data {
-			data[i] = fmt.Sprintf("%s_%d", "xiaoming", i)
-		}
-
-		var workPool = NewWorkPool(poolNum, jobLen, resLen)
-		go func() {
-			for _, v := range data {
-				go func(workPool *WorksPool, name string) {
-					params := make([]interface{}, 1)
-					params[0] = name
-					task := &Task{
-						f: func(args ...interface{}) error {
-							name := args[0].(string)
-							i := args[1].(int)
-							fmt.Printf("worker:%d name:%s\n", i, name)
-							return nil
-						},
-						params: params,
-					}
-					go workPool.AddTask(task)
-				}(workPool, v)
-			}
-		}()
-		workPool.Run()
-		for {
-
-		}
-	*/
 }
