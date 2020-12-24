@@ -20,7 +20,7 @@ func InitDownLoad(subpath string) {
 	path, _ := os.Getwd()
 	DownLoadPath = fmt.Sprintf("%s/%s/%s/", path, "mp3", subpath)
 	if _, err := os.Stat(DownLoadPath); os.IsNotExist(err) {
-		fmt.Printf("%s not exists\n", DownLoadPath)
+		Logger.Printf("[%s] %s not exists", "info", DownLoadPath)
 		os.MkdirAll(DownLoadPath, 0644)
 	}
 }
@@ -30,7 +30,7 @@ func DownLoadOne(link string, i int) error {
 	index := strings.LastIndex(link, "/") + 1
 	fileName := link[index:]
 	fullName := DownLoadPath + fileName
-	fmt.Printf("gorounting-%d 开始下载 %s\n", i, fileName)
+	Logger.Printf("[%s] gorounting-%d 开始下载 %s", "info", i, fileName)
 
 	uri, _ := url.Parse(link)
 	client := &http.Client{
@@ -42,13 +42,11 @@ func DownLoadOne(link string, i int) error {
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("读取 %s 数据失败,err:%v\n", link, err)
-		return err
+		return fmt.Errorf("从 %s 读取数据失败,err:%v", link, err)
 	}
 
 	if status := response.StatusCode; status != 200 {
-		fmt.Printf("读取原始数据 %s 出问题了,status_code:%d\n", link, status)
-		return fmt.Errorf("读取原始数据 %s 失败", link)
+		return fmt.Errorf("从 %s 读取数据失败,status_code:%d", link, status)
 	}
 
 	defer response.Body.Close()
@@ -57,8 +55,7 @@ func DownLoadOne(link string, i int) error {
 	reader := bufio.NewReader(response.Body)
 	fp, err := os.OpenFile(fullName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
-		fmt.Println("打开结果文件失败")
-		return err
+		return fmt.Errorf("打开欲下载文件 %s 失败,err:%v", fullName, err)
 	}
 
 	defer fp.Close()
@@ -70,8 +67,7 @@ func DownLoadOne(link string, i int) error {
 		}
 		writer.Write(buffer[:n])
 	}
-	fmt.Printf("gorounting-%d 下载 %s 完成\n", i, fileName)
-
+	Logger.Printf("[%s] gorounting-%d 下载 %s 完成", "info", i, fileName)
 	return nil
 }
 
@@ -84,7 +80,7 @@ func DownLoad(sw *sync.WaitGroup, i int) error {
 		}
 		err := DownLoadOne(url, i)
 		if err != nil {
-			fmt.Printf("%s 下载文件失败,err:%v\n", url, err)
+			Logger.Printf("[%s] gorounting-%d 下载 %s 失败,err:%v", "error", i, url, err)
 		}
 	}
 	sw.Done()

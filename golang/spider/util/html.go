@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,13 +21,15 @@ var (
 	DownChan chan string
 	downRe   *regexp.Regexp
 	nextRe   *regexp.Regexp
+	indexRe  *regexp.Regexp
 	timeout  time.Duration
 )
 
 func init() {
 	downRe = regexp.MustCompile(`<iframe.*?src="(.*?)"`)
 	nextRe = regexp.MustCompile(`<a.*?href='(.*?#down)'.*?>`)
-	NextChan = make(chan string, 10)
+	indexRe = regexp.MustCompile(`(\d+)-(\d+)`)
+	NextChan = make(chan string, 100)
 	DownChan = make(chan string, 10)
 	timeout = time.Duration(time.Second * 10)
 }
@@ -43,14 +46,12 @@ func GetHTML(link string) (string, error) {
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("抓取页面 %s 失败,err:%v\n", link, err)
-		return "", err
+		return "", fmt.Errorf("抓取页面 %s 失败,err:%v", link, err)
 	}
 	defer response.Body.Close()
 	html, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		fmt.Printf("读取页面 %s 数据失败,err:%v\n", link, err)
-		return "", err
+		return "", fmt.Errorf("读取页面 %s 数据失败,err:%v", link, err)
 	}
 
 	cont, err := transferUTF8(string(html), "gb2312")
@@ -67,32 +68,44 @@ func transferUTF8(source, originCharset string) (string, error) {
 	e, _ := charset.Lookup(originCharset)
 	s, err := transformString(e.NewDecoder(), source)
 	if err != nil {
-		fmt.Printf("%s 转换成 utf-8 字符失败,err:%v\n", originCharset, err)
+		return "", fmt.Errorf("%s 转换成 utf-8 字符失败,err:%v", originCharset, err)
 	}
+
 	return s, nil
 }
 
-// GetURL 从html内容获取下一集地址及当前下载链接地址
-func GetURL(str string) {
-	next := nextRe.FindAllStringSubmatch(str, -1)
-	if len(next) > 0 {
-		if len(next[0]) <= 1 {
-			close(NextChan)
-		} else {
-			if s := next[0][1]; s != "" {
-				fmt.Printf("%s 加入url请求队列\n", s)
-				NextChan <- s
-			}
-		}
-	}
+func getIndex(link string) int64 {
+	temp := indexRe.FindAllStringSubmatch(link, -1)
+	index, _ := strconv.ParseInt(temp[0][2], 10, 0)
+	return index
+}
 
+// GetURL 从html内容获取下一集地址及当前下载链接地址
+func GetURL(link, str string) {
 	down := downRe.FindAllStringSubmatch(str, -1)
 	if len(down) > 0 {
 		origin := down[0][1]
 		uri, _ := url.Parse(origin)
 		if s := uri.Query().Get("url"); s != "" {
-			fmt.Printf("%s 加入下载队列\n", s)
 			DownChan <- s
+			Logger.Printf("[%s] %s 加入下载队列", "info", s)
 		}
 	}
+
+	currIndex := getIndex(link)
+	next := nextRe.FindAllStringSubmatch(str, -1)
+	if len(next) > 0 {
+		nextIndex := getIndex(next[0][1])
+		if (len(next) <= 1) && (nextIndex < currIndex) {
+			close(NextChan)
+			close(DownChan)
+			Logger.Printf("[%s] close next url chan,close down chan", "info")
+		} else {
+			if s := next[0][1]; s != "" {
+				NextChan <- s
+				Logger.Printf("[%s] %s 加入url请求队列", "info", s)
+			}
+		}
+	}
+
 }

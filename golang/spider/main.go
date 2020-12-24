@@ -21,22 +21,24 @@ func main() {
 		return
 	}
 
+	//初始化日志
+	util.InitLog()
+	//初始化下载目录
 	util.InitDownLoad(path)
 
 	cont, err := util.GetHTML(url)
 	if err != nil {
-		panic(err)
+		util.Logger.Panicf("[%s] 初始化下载 %s 失败,err:%v", "error", url, err)
 	}
-	util.GetURL(cont)
-
+	util.GetURL(url, cont)
 	go func() {
 		for url := range util.NextChan {
 			cont, err := util.GetHTML(url)
 			if err != nil {
-				fmt.Printf("从%s 获取url失败,err:%v\n", url, err)
+				util.Logger.Printf("[%s] 从%s 获取url失败,err:%v", "error", url, err)
 				continue
 			}
-			util.GetURL(cont)
+			util.GetURL(url, cont)
 		}
 	}()
 
