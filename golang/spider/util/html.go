@@ -22,6 +22,7 @@ var (
 	downRe   *regexp.Regexp
 	nextRe   *regexp.Regexp
 	indexRe  *regexp.Regexp
+	metaRe   *regexp.Regexp
 	timeout  time.Duration
 )
 
@@ -29,8 +30,9 @@ func init() {
 	downRe = regexp.MustCompile(`<iframe.*?src="(.*?)"`)
 	nextRe = regexp.MustCompile(`<a.*?href='(.*?#down)'.*?>`)
 	indexRe = regexp.MustCompile(`(\d+)-(\d+)`)
+	metaRe = regexp.MustCompile(`<meta.*?charset=(\w+)>?`)
 	NextChan = make(chan string, 100)
-	DownChan = make(chan string, 10)
+	DownChan = make(chan string, 100)
 	timeout = time.Duration(time.Second * 10)
 }
 
@@ -54,7 +56,15 @@ func GetHTML(link string) (string, error) {
 		return "", fmt.Errorf("读取页面 %s 数据失败,err:%v", link, err)
 	}
 
-	cont, err := transferUTF8(string(html), "gb2312")
+	charset := "gb2312"
+	/*
+	   if charset := getCharset(string(html)); charset != "" && charset != "utf-8" {
+	       cont, err := transferUTF8(string(html), charset)
+	       return cont, err
+	   }
+	   return string(html), nil
+	*/
+	cont, err := transferUTF8(string(html), charset)
 	return cont, err
 }
 
@@ -80,9 +90,25 @@ func getIndex(link string) int64 {
 	return index
 }
 
+func getCharset(html string) string {
+	temp := metaRe.FindAllStringSubmatch(html, -1)
+	if len(temp) > 0 {
+		return temp[0][1]
+	}
+	return ""
+}
+
 // GetURL 从html内容获取下一集地址及当前下载链接地址
 func GetURL(link, str string) {
 	down := downRe.FindAllStringSubmatch(str, -1)
+	next := nextRe.FindAllStringSubmatch(str, -1)
+	if (len(down) < 1) && (len(next) < 1) {
+		close(NextChan)
+		close(DownChan)
+		Logger.Printf("[%s] 从%s 获取url失败,出现了异常情况,close next url chan,close down chan", "error", link)
+		return
+	}
+
 	if len(down) > 0 {
 		origin := down[0][1]
 		uri, _ := url.Parse(origin)
@@ -93,7 +119,6 @@ func GetURL(link, str string) {
 	}
 
 	currIndex := getIndex(link)
-	next := nextRe.FindAllStringSubmatch(str, -1)
 	if len(next) > 0 {
 		nextIndex := getIndex(next[0][1])
 		if (len(next) <= 1) && (nextIndex < currIndex) {
@@ -107,5 +132,4 @@ func GetURL(link, str string) {
 			}
 		}
 	}
-
 }

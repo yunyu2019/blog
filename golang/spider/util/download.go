@@ -73,11 +73,7 @@ func DownLoadOne(link string, i int) error {
 
 // DownLoad 从chan读取连接并完成文件下载
 func DownLoad(sw *sync.WaitGroup, i int) error {
-	for {
-		url, ok := <-DownChan
-		if !ok {
-			break
-		}
+	for url := range DownChan {
 		err := DownLoadOne(url, i)
 		if err != nil {
 			Logger.Printf("[%s] gorounting-%d 下载 %s 失败,err:%v", "error", i, url, err)
