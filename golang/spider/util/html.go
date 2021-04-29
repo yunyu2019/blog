@@ -24,11 +24,12 @@ var (
 	indexRe  *regexp.Regexp
 	metaRe   *regexp.Regexp
 	timeout  time.Duration
+	Cookies  string //cookie
 )
 
 func init() {
-	downRe = regexp.MustCompile(`<iframe.*?src="(.*?)"`)
-	nextRe = regexp.MustCompile(`<a.*?href='(.*?#down)'.*?>`)
+	downRe = regexp.MustCompile(`<a class="dlink".*?href="(.*?)"`)
+	nextRe = regexp.MustCompile(`<a.*?href='(.*?)'.*?>下一集`)
 	indexRe = regexp.MustCompile(`(\d+)-(\d+)`)
 	metaRe = regexp.MustCompile(`<meta.*?charset=(\w+)>?`)
 	NextChan = make(chan string, 100)
@@ -50,22 +51,37 @@ func GetHTML(link string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("抓取页面 %s 失败,err:%v", link, err)
 	}
+	if Cookies == "" {
+		Cookies = response.Header.Get("Set-Cookie")
+	}
+
 	defer response.Body.Close()
-	html, err := ioutil.ReadAll(response.Body)
+	/*
+			html, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				return "", fmt.Errorf("读取页面 %s 数据失败,err:%v", link, err)
+			}
+
+		charset := "gb2312"
+		/*
+		   if charset := getCharset(string(html)); charset != "" && charset != "utf-8" {
+		       cont, err := transferUTF8(string(html), charset)
+		       return cont, err
+		   }
+		   return string(html), nil
+	*/
+	//cont, err := transferUTF8(string(html), charset)
+
+	//将内容编码转换成utf-8编码
+	r, err := charset.NewReader(response.Body, "gb2312")
+	if err != nil {
+		return "", fmt.Errorf("页面 %s 编码转换失败,err:%v", link, err)
+	}
+	cont, err := ioutil.ReadAll(r)
 	if err != nil {
 		return "", fmt.Errorf("读取页面 %s 数据失败,err:%v", link, err)
 	}
-
-	charset := "gb2312"
-	/*
-	   if charset := getCharset(string(html)); charset != "" && charset != "utf-8" {
-	       cont, err := transferUTF8(string(html), charset)
-	       return cont, err
-	   }
-	   return string(html), nil
-	*/
-	cont, err := transferUTF8(string(html), charset)
-	return cont, err
+	return string(cont), err
 }
 
 func transformString(t transform.Transformer, s string) (string, error) {
@@ -102,6 +118,7 @@ func getCharset(html string) string {
 func GetURL(link, str string) {
 	down := downRe.FindAllStringSubmatch(str, -1)
 	next := nextRe.FindAllStringSubmatch(str, -1)
+
 	if (len(down) < 1) && (len(next) < 1) {
 		close(NextChan)
 		close(DownChan)
@@ -110,26 +127,21 @@ func GetURL(link, str string) {
 	}
 
 	if len(down) > 0 {
-		origin := down[0][1]
-		uri, _ := url.Parse(origin)
-		if s := uri.Query().Get("url"); s != "" {
+		fmt.Println(down[0][1])
+		if s := down[0][1]; s != "" {
 			DownChan <- s
 			Logger.Printf("[%s] %s 加入下载队列", "info", s)
 		}
 	}
 
-	currIndex := getIndex(link)
 	if len(next) > 0 {
-		nextIndex := getIndex(next[0][1])
-		if (len(next) <= 1) && (nextIndex < currIndex) {
-			close(NextChan)
-			close(DownChan)
-			Logger.Printf("[%s] close next url chan,close down chan", "info")
-		} else {
-			if s := next[0][1]; s != "" {
-				NextChan <- s
-				Logger.Printf("[%s] %s 加入url请求队列", "info", s)
-			}
+		if s := next[0][1]; s != "" {
+			NextChan <- s
+			Logger.Printf("[%s] %s 加入url请求队列", "info", s)
 		}
+	} else {
+		close(NextChan)
+		close(DownChan)
+		Logger.Printf("关闭下载管道")
 	}
 }

@@ -1,7 +1,6 @@
 package util
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,24 @@ import (
 	"sync"
 	"time"
 )
+
+type WriteCounter struct {
+	Title string
+	Total uint64
+}
+
+func (wc *WriteCounter) Write(p []byte) (int, error) {
+	n := len(p)
+	wc.Total += uint64(n)
+	wc.PrintProgress()
+	return n, nil
+}
+
+func (wc WriteCounter) PrintProgress() {
+	fmt.Printf("\r%s", strings.Repeat(" ", 35))
+
+	fmt.Printf("\rDownloading %s... %d B complete\n", wc.Title, wc.Total)
+}
 
 // DownLoadPath 下载文件路径
 var DownLoadPath string
@@ -39,34 +56,35 @@ func DownLoadOne(link string, i int) error {
 
 	req, err := http.NewRequest("GET", link, nil)
 	req.Header.Add("Host", uri.Host)
-	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
+	req.Header.Add("Referer", "http://www.ting89.com/")
+
+	req.Header.Add("Accept", `text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9`)
+	req.Header.Add("Upgrade-Insecure-Requests", "1")
 	response, err := client.Do(req)
 	if err != nil {
+		fmt.Println(err)
 		return fmt.Errorf("从 %s 读取数据失败,err:%v", link, err)
 	}
 
 	if status := response.StatusCode; status != 200 {
+		fmt.Println(err)
 		return fmt.Errorf("从 %s 读取数据失败,status_code:%d", link, status)
 	}
 
 	defer response.Body.Close()
 
-	buffer := make([]byte, 4096)
-	reader := bufio.NewReader(response.Body)
 	fp, err := os.OpenFile(fullName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		return fmt.Errorf("打开欲下载文件 %s 失败,err:%v", fullName, err)
 	}
 
 	defer fp.Close()
-	writer := bufio.NewWriter(fp)
-	for {
-		n, err := reader.Read(buffer)
-		if err == io.EOF {
-			break
-		}
-		writer.Write(buffer[:n])
+	counter := &WriteCounter{Title: fileName}
+	_, err = io.Copy(fp, io.TeeReader(response.Body, counter))
+	if err != nil {
+		return err
 	}
+
 	Logger.Printf("[%s] gorounting-%d 下载 %s 完成", "info", i, fileName)
 	return nil
 }
